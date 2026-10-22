@@ -89,6 +89,7 @@
     else if (a === 'open') doOpen();
     else if (a === 'save') doSave(false);
     else if (a === 'saveAs') doSave(true);
+    else if (a === 'tutorial' || a === 'account') { /* tratado pelas contas (web.js) */ }
     else if (a === 'aiKey') { $('#aiKeyBox').hidden = false; $('#aiCard').scrollIntoView({ behavior: 'smooth' }); $('#aiKey').focus(); }
     else run(a);
   });

@@ -1,11 +1,23 @@
-/* ===== GabiãoCAD na internet: contas, Premium e IA pelo servidor ===== */
+/* ===== GabiãoCAD: contas, teste grátis de 3 horas, Premium e IA pelo servidor (site e programa instalado) ===== */
 (function () {
   if (!window.GABIAO_WEB) return;
   const CFG = window.GABIAO_CONFIG || {};
+  const DESK = !!window.desktop, D = window.desktop;          // programa instalado (Windows)
+  const SITE = (CFG.siteUrl || '').replace(/\/$/, '');
   const ON = !!(CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
-  const sb = ON ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey) : null;
-  const PLAN = { logged: false, email: '', plano: 'gratis', premium: false, estado: 'expirado', dias: 0, teste_ate: null, premium_ate: null, mp_status: null, usados: 0, limite: 5 };
-  const TUTORIAL = '../assets/tutorial.mp4', TUTORIAL_CAPA = '../assets/tutorial-capa.webp';
+  const sb = ON ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey,
+    DESK ? { auth: { flowType: 'pkce', detectSessionInUrl: false, persistSession: true, autoRefreshToken: true } } : undefined) : null;
+  const ASSET = DESK ? './' : '../assets/', PAGE = DESK ? (SITE ? SITE + '/' : '') : '../';
+  const VOLTA_APP = 'gabiaocad://auth';                      // retorno do login no programa instalado
+  // estado: 'teste' | 'expirado' | 'premium' | 'offline'
+  const PLAN = { logged: false, email: '', plano: 'gratis', premium: false, estado: 'expirado', usoSeg: 0, limiteSeg: 3 * 3600, premium_ate: null, mp_status: null, usados: 0, limite: 5 };
+  const TUTORIAL = ASSET + 'tutorial.mp4', TUTORIAL_CAPA = ASSET + 'tutorial-capa.webp', ICON = DESK ? './icon.png' : '../assets/icon.png';
+  const restante = () => Math.max(0, PLAN.limiteSeg - PLAN.usoSeg);
+  function fmtTempo(seg) {
+    const m = Math.floor(seg / 60), h = Math.floor(m / 60), mm = m % 60;
+    if (m < 1) return 'menos de 1 min';
+    return h ? `${h}h${mm ? ' ' + String(mm).padStart(2, '0') + 'min' : ''}` : `${m} min`;
+  }
   window.GABIAO_PLAN = PLAN;
   let cloudId = null;
 
@@ -49,7 +61,7 @@
   document.head.appendChild(css);
 
   /* ---------- download comum no navegador ---------- */
-  saveFile = async function (filename, data) {
+  if (!DESK) saveFile = async function (filename, data) {
     const blob = data instanceof Blob ? data : new Blob([data]);
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
@@ -67,15 +79,14 @@
   /* ---------- conta ---------- */
   const acct = document.createElement('div'); acct.className = 'acct';
   document.querySelector('.bar .actions').prepend(acct);
-  const diasTxt = n => n <= 1 ? 'último dia' : `${n} dias`;
   function renderAcct() {
     const tut = '<button class="btn" type="button" id="tutBtn" title="Vídeo de 2 minutos ensinando a usar">▶ Como usar</button>';
     if (!ON) { acct.innerHTML = tut; document.getElementById('tutBtn').onclick = tutorialDialog; return; }
     const badge = PLAN.premium ? `<span class="planbadge pro">${PLAN.plano === 'estudante' ? 'Estudante' : 'Premium'}</span>`
-      : `<span class="planbadge teste ${PLAN.dias <= 2 ? 'fim' : ''}" id="testeBadge" title="Ver planos">${PLAN.estado === 'teste' ? 'Teste · ' + diasTxt(PLAN.dias) : 'Teste encerrado'}</span>`;
-    acct.innerHTML = tut + (PLAN.logged ? `${badge}<button class="btn" type="button" id="acctBtn">Minha conta</button>` : '');
+      : `<span class="planbadge teste ${restante() <= 20 * 60 ? 'fim' : ''}" id="testeBadge" title="Tempo de teste que ainda resta. Clique para ver os planos.">${PLAN.estado === 'teste' ? 'Teste · ' + fmtTempo(restante()) : 'Teste encerrado'}</span>`;
+    acct.innerHTML = tut + (PLAN.logged ? `${PLAN.estado === 'offline' ? '<span class="planbadge">Sem conexão</span>' : badge}<button class="btn" type="button" id="acctBtn">Minha conta</button>` : '');
     document.getElementById('tutBtn').onclick = tutorialDialog;
-    const tb = document.getElementById('testeBadge'); if (tb) tb.onclick = () => plansDialog(`Seu teste grátis termina em ${new Date(PLAN.teste_ate).toLocaleDateString('pt-BR')}.`);
+    const tb = document.getElementById('testeBadge'); if (tb) tb.onclick = () => plansDialog(`Restam ${fmtTempo(restante())} do seu teste grátis. O tempo só conta enquanto você usa o programa.`);
     const ab = document.getElementById('acctBtn'); if (ab) ab.onclick = accountDialog;
   }
   // formulário de entrada (usado na tela inicial e no diálogo)
@@ -84,36 +95,55 @@
       <div class="help" style="text-align:center">ou receba um link de acesso no e-mail</div>
       <div class="aikeyrow"><div class="inp"><input data-g="email" type="email" placeholder="seu@email.com" autocomplete="email"></div><button class="btn" type="button" data-g="send">Enviar link</button></div>
       <p class="help" data-g="msg">Estudante: entre com o e-mail da faculdade (.edu.br) para poder assinar o plano Estudante.</p>`;
-    const volta = location.origin + location.pathname + location.search;
-    el.querySelector('[data-g=google]').onclick = async () => { await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta } }); };
+    const volta = DESK ? VOLTA_APP : location.origin + location.pathname + location.search;
+    const msg = el.querySelector('[data-g=msg]');
+    el.querySelector('[data-g=google]').onclick = async () => {
+      if (!DESK) { await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta } }); return; }
+      const { data, error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, skipBrowserRedirect: true } });
+      if (error || !data?.url) { toast('Não foi possível abrir o login: ' + (error?.message || 'sem conexão')); return; }
+      D.openExternal(data.url);
+      msg.innerHTML = '<b>Continue no navegador.</b> Depois de entrar, o navegador pergunta se pode abrir o GabiãoCAD: clique em <b>Abrir</b>.';
+    };
     el.querySelector('[data-g=send]').onclick = async () => {
       const email = el.querySelector('[data-g=email]').value.trim(); if (!/^\S+@\S+\.\S+$/.test(email)) { toast('Digite um e-mail válido.'); return; }
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: volta } });
       if (error) toast('Não foi possível enviar: ' + error.message);
-      else { el.querySelector('[data-g=msg]').innerHTML = `<b>Link enviado para ${esc(email)}.</b> Abra seu e-mail e clique no link para entrar (veja também a caixa de spam).`; aoEnviar && aoEnviar(); }
+      else { msg.innerHTML = `<b>Link enviado para ${esc(email)}.</b> Abra seu e-mail ${DESK ? 'neste computador ' : ''}e clique no link para entrar (veja também a caixa de spam).${DESK ? ' O navegador vai perguntar se pode abrir o GabiãoCAD: clique em <b>Abrir</b>.' : ''}`; aoEnviar && aoEnviar(); }
     };
   }
   function loginDialog(motivo) {
     const d = dialog('Entrar', `${typeof motivo === 'string' ? `<p class="help">${esc(motivo)}</p>` : ''}<div class="login" style="display:grid;gap:10px"></div>`);
     loginForm(d.querySelector('.login'), () => setTimeout(() => d.close(), 2500));
   }
+  // programa instalado: o navegador devolve gabiaocad://auth?code=... depois do login
+  async function retornoLogin(url) {
+    try {
+      const u = new URL(url), code = u.searchParams.get('code'), erro = u.searchParams.get('error_description') || new URLSearchParams(u.hash.slice(1)).get('error_description');
+      if (erro) { toast('Não foi possível entrar: ' + erro); return; }
+      if (!code) return;
+      const { error } = await sb.auth.exchangeCodeForSession(code);
+      if (error) toast('Não foi possível entrar: ' + error.message + '. Peça um link novo.'); else { toast('Você entrou na sua conta.'); loadPlan(); }
+    } catch (e) { toast('Link de acesso inválido.'); }
+  }
+  if (DESK && ON && D.onAuthUrl) { D.onAuthUrl(retornoLogin); D.takePendingAuth().then(u => u && retornoLogin(u)); }
 
   /* ---------- tela de entrada e bloqueio ao fim do teste ---------- */
   const gate = document.createElement('div'); gate.id = 'gate'; gate.hidden = !ON;
   gate.innerHTML = '<div class="card"><p class="help">Carregando…</p></div>';
   document.body.appendChild(gate);
   const videoTag = (auto) => `<video class="tutv" controls preload="metadata" playsinline poster="${TUTORIAL_CAPA}" ${auto ? 'autoplay' : ''}><source src="${TUTORIAL}" type="video/mp4">Seu navegador não toca vídeo.</video>`;
-  const topo = (titulo) => `<div class="top"><img src="../assets/icon.png" alt=""><div><h2>${titulo}</h2></div></div>`;
-  const rodape = `<div class="foot"><a href="../">← Voltar para a página inicial</a><span><a href="../termos.html" target="_blank">Termos de uso</a> · <a href="../privacidade.html" target="_blank">Privacidade</a></span></div>`;
+  const topo = (titulo) => `<div class="top"><img src="${ICON}" alt=""><div><h2>${titulo}</h2></div></div>`;
+  const legais = PAGE ? `<span><a href="${PAGE}termos.html" target="_blank">Termos de uso</a> · <a href="${PAGE}privacidade.html" target="_blank">Privacidade</a></span>` : '';
+  const rodape = `<div class="foot">${DESK ? '<span></span>' : '<a href="../">← Voltar para a página inicial</a>'}${legais}</div>`;
   let avisouFim = false;
   function renderGate() {
     if (!ON) { gate.hidden = true; return; }
     document.body.style.overflow = '';
     if (!PLAN.logged) {
-      gate.innerHTML = `<div class="card">${topo('Teste o GabiãoCAD grátis por 7 dias')}
+      gate.innerHTML = `<div class="card">${topo('Teste o GabiãoCAD grátis por 3 horas')}
         <div class="cols"><div style="display:grid;gap:12px">
           <ul class="ok"><li>Muro de gabião completo: cálculo, corte, vista e 3D</li><li>Estabilidade, chuva, leito de rio e estabilidade global</li><li>Memorial em PDF e quantitativos</li><li>5 análises de foto do local com sugestão de projeto</li></ul>
-          <p class="help">Sem cartão de crédito. Crie sua conta para começar; o teste conta a partir do primeiro acesso.</p>
+          <p class="help">Sem cartão de crédito. São 3 horas de uso: o tempo só conta enquanto o programa está aberto e você está usando.${DESK ? ' O programa precisa de internet para entrar na conta.' : ''}</p>
           <div class="login"></div></div>
           <div style="display:grid;gap:8px">${videoTag(false)}<span class="help">Veja em 2 minutos como montar um muro no programa.</span></div></div>
         ${rodape}</div>`;
@@ -122,49 +152,80 @@
       gate.innerHTML = `<div class="card">${topo('Seu teste grátis terminou')}
         <p>Obrigado por testar o GabiãoCAD. Para continuar projetando, escolha um plano. Seus projetos salvos na nuvem continuam guardados e voltam assim que você assinar.</p>
         <div data-plans></div>
-        <div class="foot"><span>Entrou como <b>${esc(PLAN.email)}</b> · <a href="#" data-sair>Sair</a> · <a href="#" data-tut>Ver o tutorial</a></span><span><a href="../termos.html" target="_blank">Termos</a> · <a href="../privacidade.html" target="_blank">Privacidade</a></span></div></div>`;
+        <div class="foot"><span>Entrou como <b>${esc(PLAN.email)}</b> · <a href="#" data-sair>Sair</a> · <a href="#" data-tut>Ver o tutorial</a></span>${legais}</div></div>`;
       fillPlans(gate.querySelector('[data-plans]'));
       gate.querySelector('[data-sair]').onclick = async e => { e.preventDefault(); await sb.auth.signOut(); cloudId = null; loadPlan(); };
       gate.querySelector('[data-tut]').onclick = e => { e.preventDefault(); tutorialDialog(); };
+    } else if (PLAN.estado === 'offline') {
+      gate.innerHTML = `<div class="card">${topo('Sem conexão com a internet')}
+        <p>O GabiãoCAD precisa de internet para conferir sua conta e contar o tempo do teste grátis. Assinantes podem usar o programa instalado sem internet por até 7 dias depois da última conexão.</p>
+        <div class="row-btns"><button class="btn primary" type="button" data-retry>Tentar de novo</button></div>${rodape}</div>`;
+      gate.querySelector('[data-retry]').onclick = () => { gate.querySelector('[data-retry]').textContent = 'Conectando…'; loadPlan(); };
     } else {
       gate.hidden = true; gate.innerHTML = '';
-      if (PLAN.estado === 'teste' && PLAN.dias <= 2 && !avisouFim) {
-        avisouFim = true;
-        let ja = false; try { ja = sessionStorage.getItem('gabiao-aviso-fim') === PLAN.teste_ate; sessionStorage.setItem('gabiao-aviso-fim', PLAN.teste_ate); } catch (e) {}
-        if (!ja) setTimeout(() => plansDialog(PLAN.dias <= 1 ? 'Hoje é o último dia do seu teste grátis.' : `Faltam ${PLAN.dias} dias para o fim do seu teste grátis.`), 800);
-      }
+      avisoFim();
       return;
     }
     gate.hidden = false; document.body.style.overflow = 'hidden';
+  }
+  function avisoFim() {
+    if (PLAN.estado !== 'teste' || restante() > 15 * 60 || avisouFim) return;
+    avisouFim = true;
+    setTimeout(() => plansDialog(`Faltam ${fmtTempo(restante())} para acabar o seu teste grátis. Assine para continuar sem interrupção.`), 800);
   }
   function tutorialDialog() {
     const d = dialog('Como usar o GabiãoCAD', `${videoTag(true)}
       <ol class="feat"><li><b>Projeto</b>: dê um nome e escolha as camadas de gabião (largura e altura de cada caixa).</li><li><b>Solos</b>: informe o aterro atrás do muro e a fundação.</li><li>Veja o <b>corte</b>, a <b>vista</b> e o <b>3D</b>; os resultados ficam verdes quando passam.</li><li>Use <b>Otimizar</b> para o programa achar a seção mais econômica que passa em tudo.</li><li><b>Exportar</b> gera o memorial em PDF e os quantitativos.</li></ol>`, true);
     const v = d.querySelector('video'); d.addEventListener('close', () => v.pause());
   }
+  // último plano confirmado (para o programa instalado funcionar sem internet, só para assinantes)
+  const CACHE = 'gabiao-plano';
+  function lerCache() { try { return JSON.parse(localStorage.getItem(CACHE) || 'null'); } catch (e) { return null; } }
+  function gravarCache(v) { try { v ? localStorage.setItem(CACHE, JSON.stringify(v)) : localStorage.removeItem(CACHE); } catch (e) {} }
   async function loadPlan() {
     if (!ON) return;
     const { data: { session } } = await sb.auth.getSession();
     PLAN.logged = !!session; PLAN.email = session?.user?.email || '';
     if (session) {
-      const { data: p } = await sb.from('profiles').select('plano, premium_ate, mp_status, teste_ate').eq('id', session.user.id).single();
-      const mes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).format(new Date()).slice(0, 7);
-      const { data: u } = await sb.from('uso_ia').select('n').eq('mes', mes).maybeSingle();
-      PLAN.plano = p?.plano || 'gratis'; PLAN.premium_ate = p?.premium_ate || null; PLAN.mp_status = p?.mp_status || null;
-      PLAN.premium = PLAN.plano !== 'gratis' && (!PLAN.premium_ate || new Date(PLAN.premium_ate) > new Date());
-      PLAN.teste_ate = p?.teste_ate || null;
-      const resta = PLAN.teste_ate ? new Date(PLAN.teste_ate) - new Date() : 0;
-      PLAN.estado = PLAN.premium ? 'premium' : resta > 0 ? 'teste' : 'expirado';
-      PLAN.dias = resta > 0 ? Math.ceil(resta / 864e5) : 0;
-      PLAN.limite = PLAN.premium ? 150 : 5; PLAN.usados = u?.n || 0;
-    } else Object.assign(PLAN, { plano: 'gratis', premium: false, estado: 'expirado', dias: 0, teste_ate: null, usados: 0, limite: 5 });
+      const { data: p, error } = await sb.from('profiles').select('plano, premium_ate, mp_status, uso_seg').eq('id', session.user.id).single();
+      if (error || !p) {
+        const c = lerCache(), agora = Date.now();
+        const vale = DESK && c && c.premium && c.id === session.user.id && agora - c.verificado < 7 * 864e5 && (!c.premium_ate || new Date(c.premium_ate) > agora);
+        if (vale) Object.assign(PLAN, { plano: c.plano, premium: true, premium_ate: c.premium_ate, estado: 'premium' });
+        else PLAN.estado = 'offline';
+      } else {
+        const mes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).format(new Date()).slice(0, 7);
+        const { data: u } = await sb.from('uso_ia').select('n').eq('mes', mes).maybeSingle();
+        PLAN.plano = p.plano || 'gratis'; PLAN.premium_ate = p.premium_ate || null; PLAN.mp_status = p.mp_status || null;
+        PLAN.premium = PLAN.plano !== 'gratis' && (!PLAN.premium_ate || new Date(PLAN.premium_ate) > new Date());
+        PLAN.usoSeg = p.uso_seg || 0;
+        PLAN.estado = PLAN.premium ? 'premium' : restante() > 0 ? 'teste' : 'expirado';
+        PLAN.limite = PLAN.premium ? 150 : 5; PLAN.usados = u?.n || 0;
+        gravarCache({ id: session.user.id, plano: PLAN.plano, premium: PLAN.premium, premium_ate: PLAN.premium_ate, verificado: Date.now() });
+      }
+    } else { Object.assign(PLAN, { plano: 'gratis', premium: false, estado: 'expirado', usoSeg: 0, usados: 0, limite: 5 }); gravarCache(null); }
     window.PDF_MARCA_DAGUA = PLAN.premium ? null : 'VERSÃO DE TESTE · GabiãoCAD';
     renderAcct(); renderGate(); aiInit(serverAI); applyGates();
+    if (PLAN.estado === 'teste') ping(true);
   }
+
+  /* ---------- contagem do tempo de teste: um sinal por minuto de uso ativo ---------- */
+  let ultimaAcao = Date.now(), falhas = 0;
+  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { ultimaAcao = Date.now(); }, { passive: true, capture: true }));
+  async function ping(forcar) {
+    if (!ON || !PLAN.logged || PLAN.estado !== 'teste') return;
+    if (!forcar && (document.hidden || Date.now() - ultimaAcao > 2 * 60000)) return;   // parado ou em outra janela: não conta
+    const { data, error } = await sb.rpc('registrar_uso');
+    if (error || !data) { if (++falhas >= 3) { falhas = 0; PLAN.estado = 'offline'; renderGate(); } return; }
+    falhas = 0; PLAN.usoSeg = data.uso_seg; PLAN.limiteSeg = data.limite_seg || PLAN.limiteSeg;
+    if (data.premium || !data.liberado) { loadPlan(); return; }
+    renderAcct(); avisoFim();
+  }
+  setInterval(() => ping(false), 60000);
   function accountDialog() {
     const ate = PLAN.premium_ate ? new Date(PLAN.premium_ate).toLocaleDateString('pt-BR') : null;
     const d = dialog('Minha conta', `
-      <div><b>${esc(PLAN.email)}</b><br><span class="help">Plano: ${PLAN.premium ? (PLAN.plano === 'estudante' ? 'Estudante' : 'Premium') : `Teste grátis · termina em ${new Date(PLAN.teste_ate).toLocaleDateString('pt-BR')}`}${PLAN.premium && ate ? (PLAN.mp_status === 'cancelled' ? ` · cancelado, acesso até ${ate}` : ` · renova até ${ate}`) : ''}</span></div>
+      <div><b>${esc(PLAN.email)}</b><br><span class="help">Plano: ${PLAN.premium ? (PLAN.plano === 'estudante' ? 'Estudante' : 'Premium') : `Teste grátis · restam ${fmtTempo(restante())} de uso`}${PLAN.premium && ate ? (PLAN.mp_status === 'cancelled' ? ` · cancelado, acesso até ${ate}` : ` · renova até ${ate}`) : ''}</span></div>
       <div class="help">Análises de foto ${PLAN.premium ? 'neste mês' : 'do teste'}: <b>${PLAN.usados} de ${PLAN.premium ? 'uso livre' : PLAN.limite}</b></div>
       <div class="row-btns">
         <button class="btn" type="button" id="cSave">Salvar projeto na nuvem</button>
@@ -201,7 +262,11 @@
       if (!PLAN.logged) { fechar && fechar(); loginDialog('Entre na sua conta para assinar o Premium.'); return; }
       b.disabled = true; b.textContent = 'Abrindo…';
       const r = await callFn('assinar', { opcao: b.dataset.op });
-      if (r.url) location.href = r.url; else { toast(r.mensagem || 'Não foi possível abrir o pagamento.'); b.disabled = false; b.textContent = 'Assinar'; }
+      if (r.url && DESK) {
+        D.openExternal(r.url); fechar && fechar(); b.disabled = false; b.textContent = 'Assinar';
+        toast('Conclua o pagamento no navegador. O Premium é liberado aqui assim que o Mercado Pago confirmar.');
+        let n = 0; const t = setInterval(async () => { await loadPlan(); if (PLAN.premium || ++n > 180) { clearInterval(t); if (PLAN.premium) toast('Premium liberado. Obrigado!'); } }, 5000);
+      } else if (r.url) location.href = r.url; else { toast(r.mensagem || 'Não foi possível abrir o pagamento.'); b.disabled = false; b.textContent = 'Assinar'; }
     });
   }
   async function callFn(nome, body) {
@@ -305,7 +370,11 @@
   }
 
   if (/[?&]planos/.test(location.search)) setTimeout(() => plansDialog(), 600);
+  if (DESK && D.onMenu) D.onMenu(a => {
+    if (a === 'tutorial') tutorialDialog();
+    else if (a === 'account' && ON) PLAN.logged ? accountDialog() : loginDialog();
+  });
   if (ON) sb.auth.onAuthStateChange(() => loadPlan());
   renderAcct(); loadPlan();
-  if (!ON) aiInit(serverAI);
+  if (!ON && !DESK) aiInit(serverAI);
 })();

@@ -4,6 +4,19 @@ const fs = require('fs');
 
 let win = null;
 let pendingOpen = null;
+let pendingAuth = null;   // gabiaocad://auth?code=... recebido antes da janela abrir
+
+// contas ligadas? (o build grava a configuração do servidor em app/config.js)
+const CONTAS = (() => { try { return /"supabaseUrl":\s*"https:/.test(fs.readFileSync(path.join(__dirname, 'app', 'config.js'), 'utf8')); } catch (e) { return false; } })();
+const authFromArgs = argv => argv.find(a => /^gabiaocad:\/\//i.test(a)) || null;
+function deliverAuth(url) {
+  if (!url) return;
+  if (win && !win.webContents.isLoading()) { send('auth-url', url); if (win.isMinimized()) win.restore(); win.focus(); }
+  else pendingAuth = url;
+}
+// registra o endereço gabiaocad:// para o navegador devolver o login ao programa
+if (process.defaultApp) { if (process.argv.length >= 2) app.setAsDefaultProtocolClient('gabiaocad', process.execPath, [path.resolve(process.argv[1])]); }
+else app.setAsDefaultProtocolClient('gabiaocad');
 
 function fileFromArgs(argv) {
   return argv.slice(1).find(a => /\.(gabiao|json)$/i.test(a) && fs.existsSync(a)) || null;
@@ -50,7 +63,8 @@ function buildMenu() {
       { label: 'Ferramentas do desenvolvedor', role: 'toggleDevTools', accelerator: 'F12' },
     ] },
     { label: 'Ajuda', submenu: [
-      m('Chave da API (análise de fotos)…', null, 'aiKey'),
+      m('Como usar (vídeo)…', 'F1', 'tutorial'),
+      ...(CONTAS ? [m('Minha conta…', null, 'account')] : [m('Chave da API (análise de fotos)…', null, 'aiKey')]),
       { type: 'separator' },
       { label: 'Sobre o GabiãoCAD', click: () => dialog.showMessageBox(win, {
         type: 'info', title: 'GabiãoCAD', message: `GabiãoCAD ${app.getVersion()}`,
@@ -160,6 +174,8 @@ ipcMain.handle('ai-analyze', async (_e, { prompt, images }) => {
   } finally { aiAbort = null; }
 });
 
+ipcMain.handle('open-external', (_e, url) => { if (/^https:\/\//i.test(String(url))) shell.openExternal(url); });
+ipcMain.handle('take-pending-auth', () => { const u = pendingAuth; pendingAuth = null; return u; });
 ipcMain.handle('show-in-folder', (_e, p) => { if (p) shell.showItemInFolder(p); });
 ipcMain.handle('set-title', (_e, t) => { if (win) win.setTitle(t); });
 ipcMain.handle('confirm-close', async (_e, { dirty }) => {
@@ -182,9 +198,11 @@ else {
   app.on('second-instance', (_e, argv) => {
     const f = fileFromArgs(argv);
     if (win) { if (win.isMinimized()) win.restore(); win.focus(); if (f) openProjectFile(f); }
+    deliverAuth(authFromArgs(argv));
   });
   app.whenReady().then(() => {
     pendingOpen = fileFromArgs(process.argv);
+    pendingAuth = authFromArgs(process.argv);
     buildMenu();
     createWindow();
   });

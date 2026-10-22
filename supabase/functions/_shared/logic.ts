@@ -7,7 +7,7 @@ export const PRECOS = {
 } as const;
 export type Opcao = keyof typeof PRECOS;
 
-export const TESTE_DIAS = 7; // igual ao default de profiles.teste_ate na migração
+export const TESTE_SEG = 3 * 3600; // 3 horas de uso; igual a limite_teste_seg() na migração
 
 export const LIMITES = {
   teste: { analises: 5, modelo: 'claude-haiku-5-5' },      // durante o teste grátis
@@ -15,16 +15,16 @@ export const LIMITES = {
   premium: { analises: 150, modelo: 'claude-sonnet-5-5' }, // "sem limite" com uso justo
 };
 
-export interface Perfil { plano: string; premium_ate: string | null; teste_ate?: string | null }
+export interface Perfil { plano: string; premium_ate: string | null; uso_seg?: number | null }
 export type Estado = 'premium' | 'teste' | 'expirado';
 
 export function infoPlano(p: Perfil | null, agora = new Date()) {
   const premium = !!p && p.plano !== 'gratis' && (!p.premium_ate || new Date(p.premium_ate) > agora);
-  const emTeste = !premium && !!p?.teste_ate && new Date(p.teste_ate) > agora;
+  const uso = Math.max(0, p?.uso_seg ?? 0);
+  const emTeste = !premium && !!p && uso < TESTE_SEG;
   const estado: Estado = premium ? 'premium' : emTeste ? 'teste' : 'expirado';
   const L = LIMITES[estado];
-  const diasRestantes = emTeste ? Math.ceil((new Date(p!.teste_ate!).getTime() - agora.getTime()) / 864e5) : 0;
-  return { premium, estado, diasRestantes, plano: premium ? p!.plano : 'gratis', limite: L.analises, modelo: L.modelo, premium_ate: p?.premium_ate ?? null };
+  return { premium, estado, restanteSeg: emTeste ? TESTE_SEG - uso : 0, plano: premium ? p!.plano : 'gratis', limite: L.analises, modelo: L.modelo, premium_ate: p?.premium_ate ?? null };
 }
 
 export function emailEstudante(email: string) {

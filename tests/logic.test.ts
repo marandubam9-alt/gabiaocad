@@ -4,12 +4,13 @@ import { infoPlano, emailEstudante, corpoAssinatura, lerReferencia, atualizacaoP
 
 const agora = new Date('2026-10-22T12:00:00Z');
 assert.equal(infoPlano(null).premium, false); assert.equal(infoPlano(null).estado, 'expirado');
-const tst = infoPlano({ plano: 'gratis', premium_ate: null, teste_ate: '2026-10-27T13:00:00Z' }, agora);
-assert.deepEqual([tst.estado, tst.limite, tst.modelo, tst.diasRestantes], ['teste', 5, 'claude-haiku-5-5', 6]);
-const exp = infoPlano({ plano: 'gratis', premium_ate: null, teste_ate: '2026-10-21T00:00:00Z' }, agora);
+const tst = infoPlano({ plano: 'gratis', premium_ate: null, uso_seg: 3600 }, agora);
+assert.deepEqual([tst.estado, tst.limite, tst.modelo, tst.restanteSeg], ['teste', 5, 'claude-haiku-5-5', 7200]);
+assert.equal(infoPlano({ plano: 'gratis', premium_ate: null, uso_seg: 0 }, agora).estado, 'teste', 'conta nova');
+const exp = infoPlano({ plano: 'gratis', premium_ate: null, uso_seg: 10800 }, agora);
 assert.deepEqual([exp.estado, exp.limite], ['expirado', 0]);
-assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-11-30T00:00:00Z', teste_ate: '2026-10-01T00:00:00Z' }, agora).estado, 'premium', 'assinante com teste vencido');
-assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-10-01T00:00:00Z', teste_ate: '2026-10-01T00:00:00Z' }, agora).estado, 'expirado', 'assinatura e teste vencidos');
+assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-11-30T00:00:00Z', uso_seg: 99999 }, agora).estado, 'premium', 'assinante com teste usado');
+assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-10-01T00:00:00Z', uso_seg: 99999 }, agora).estado, 'expirado', 'assinatura vencida e teste usado');
 const pAtivo = infoPlano({ plano: 'premium', premium_ate: '2026-11-30T00:00:00Z' }, agora);
 assert.equal(pAtivo.premium, true); assert.equal(pAtivo.limite, 150); assert.equal(pAtivo.modelo, 'claude-sonnet-5-5');
 assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-10-01T00:00:00Z' }, agora).premium, false, 'vencido');

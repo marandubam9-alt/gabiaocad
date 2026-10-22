@@ -22,12 +22,12 @@ O site fica no **GitHub Pages** (grátis), as contas e o limite de fotos no **Su
    - `CONTATO` = e-mail de contato
 3. Faça qualquer alteração (ou rode **Actions → Publicar site → Run workflow**). Em 2 minutos o site está no ar.
 
-Sem as contas configuradas, o programa abre direto, sem login (modo de demonstração, sem foto com IA). Com o Supabase configurado, o site exige login, dá **7 dias de teste grátis** a partir do primeiro acesso e depois mostra a tela de planos. Para mudar o prazo, troque `7 days` na migração `supabase/migrations/20261023000000_teste_gratis.sql` e `TESTE_DIAS` em `supabase/functions/_shared/logic.ts`.
+Sem as contas configuradas, o programa abre direto, sem login (modo de demonstração, sem foto com IA). Com o Supabase configurado, o site exige login, dá **3 horas de uso grátis** (o tempo só conta com o programa aberto e em uso) e depois mostra a tela de planos. O programa do Windows segue as mesmas regras com a mesma conta, desde que o instalador seja gerado depois de definir as variáveis `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SITE_URL` no GitHub. Para mudar o prazo, troque `3 * 3600` em `limite_teste_seg()` na migração `supabase/migrations/20261023000000_teste_gratis.sql` e `TESTE_SEG` em `supabase/functions/_shared/logic.ts`.
 
 ### 2. Supabase (contas, projetos na nuvem, limite de fotos)
 1. Crie um projeto em supabase.com (região São Paulo). Guarde a **senha do banco**.
 2. Em **Project Settings → API**, copie a **URL** e a chave **anon public**.
-3. Em **Authentication → URL Configuration**: Site URL = `SITE_URL`; Redirect URLs = `SITE_URL/app/`.
+3. Em **Authentication → URL Configuration**: Site URL = `SITE_URL`; Redirect URLs = `SITE_URL/app/` **e** `gabiaocad://auth` (este último é para o programa do Windows receber o login de volta do navegador).
 4. Em **Authentication → Providers**: e-mail já vem ligado. Para "Entrar com Google", ligue o Google e cole o Client ID e o Secret criados no Google Cloud Console (tipo "Aplicativo da Web", URI de redirecionamento mostrada pelo próprio Supabase).
 5. Em supabase.com → **Account → Access Tokens**, crie um token.
 6. No GitHub, **Variables**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_PROJECT_REF` (o código do projeto, que aparece na URL).
@@ -57,3 +57,7 @@ npm test                       # regras de plano, preços e assinatura do webhoo
 python3 scripts/build.py site  # gera dist/site
 cd dist/site && python3 -m http.server 8000
 ```
+
+## Vídeo tutorial
+
+O vídeo `site/assets/tutorial.mp4` tem narração em português gerada pela voz livre **pt_BR "faber"** do Piper (licença MIT). O texto de cada fala está em `tutorial/roteiro.json`. Ao alterar esse arquivo, o GitHub gera as falas novas sozinho (workflow **Narração do tutorial**, ramo `narracao`); depois é só pedir para montar o vídeo de novo.

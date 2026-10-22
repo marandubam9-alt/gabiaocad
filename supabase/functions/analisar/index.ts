@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   if (!imgs.length || !body.prompt || body.prompt.length > 20000) return json({ erro: 'pedido', mensagem: 'Envie de 1 a 4 fotos.' }, 400);
 
   const db = admin();
-  const { data: perfil } = await db.from('profiles').select('plano, premium_ate, teste_ate').eq('id', user.id).single();
+  const { data: perfil } = await db.from('profiles').select('plano, premium_ate, uso_seg').eq('id', user.id).single();
   const P = infoPlano(perfil);
   if (P.estado === 'expirado') return json({ erro: 'teste_fim', mensagem: 'Seu teste grátis terminou. Assine para continuar analisando fotos.' }, 403);
   const { data: usados, error: e1 } = await db.rpc('consumir_analise', { p_user: user.id, p_limite: P.limite });

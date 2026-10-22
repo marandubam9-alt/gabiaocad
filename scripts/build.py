@@ -60,9 +60,8 @@ def build_site():
             open(p, 'w', encoding='utf-8').write(t)
     app = os.path.join(out, 'app'); os.makedirs(app)
     vendor_copy(os.path.join(app, 'vendor'), VENDOR + SUPA); fonts(os.path.join(app, 'fonts'))
-    supa = os.environ.get('SUPABASE_URL', '').rstrip('/')
-    cfg = {'supabaseUrl': supa, 'supabaseAnonKey': os.environ.get('SUPABASE_ANON_KEY', ''), 'siteUrl': os.environ.get('SITE_URL', '')}
-    open(os.path.join(app, 'config.js'), 'w').write('window.GABIAO_WEB = true;\nwindow.GABIAO_CONFIG = ' + json.dumps(cfg) + ';\n')
+    supa, cfg, js = config_js()
+    open(os.path.join(app, 'config.js'), 'w').write(js)
     connect = "'self' data: blob:" + (f' {supa}' if supa else '') + ' https://*.supabase.co'
     csp = f"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src {connect}; worker-src 'self' blob:; frame-src https://*.supabase.co"
     head = '<title>GabiãoCAD · programa</title>\n<link rel="icon" href="../assets/icon.png">\n<script src="config.js"></script>\n'
@@ -70,12 +69,23 @@ def build_site():
     open(os.path.join(app, 'index.html'), 'w', encoding='utf-8').write(html)
     print('site ->', out, f'({len(html)//1024} KB app)', 'contas ligadas' if cfg['supabaseUrl'] else 'contas desligadas (sem SUPABASE_URL)')
 
+def config_js(desktop=False):
+    supa = os.environ.get('SUPABASE_URL', '').rstrip('/')
+    cfg = {'supabaseUrl': supa, 'supabaseAnonKey': os.environ.get('SUPABASE_ANON_KEY', ''), 'siteUrl': os.environ.get('SITE_URL', ''), 'desktop': desktop}
+    return supa, cfg, 'window.GABIAO_WEB = true;\nwindow.GABIAO_CONFIG = ' + json.dumps(cfg) + ';\n'
+
 def build_desktop():
     app = os.path.join(ROOT, 'desktop', 'app'); shutil.rmtree(app, ignore_errors=True); os.makedirs(app)
-    vendor_copy(os.path.join(app, 'vendor'), VENDOR); fonts(os.path.join(app, 'fonts'))
-    shutil.copy(os.path.join(ROOT, 'site', 'assets', 'icon.png'), os.path.join(app, 'icon.png'))
-    open(os.path.join(app, 'index.html'), 'w', encoding='utf-8').write(page(read('desktop.js'), [v for _, v in VENDOR]))
-    print('desktop ->', app)
+    vendor_copy(os.path.join(app, 'vendor'), VENDOR + SUPA); fonts(os.path.join(app, 'fonts'))
+    for f in ['icon.png', 'tutorial.mp4', 'tutorial-capa.webp']:
+        shutil.copy(os.path.join(ROOT, 'site', 'assets', f), os.path.join(app, f))
+    supa, cfg, js = config_js(desktop=True)
+    open(os.path.join(app, 'config.js'), 'w').write(js)
+    connect = "'self' data: blob:" + (f' {supa}' if supa else '') + ' https://*.supabase.co'
+    csp = f"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self'; connect-src {connect}; worker-src 'self' blob:"
+    html = page(read('desktop.js') + '\n' + read('web.js'), [v for _, v in VENDOR] + ['supabase.js'], '<script src="config.js"></script>\n', csp)
+    open(os.path.join(app, 'index.html'), 'w', encoding='utf-8').write(html)
+    print('desktop ->', app, 'contas ligadas' if supa else 'contas desligadas (sem SUPABASE_URL)')
 
 if __name__ == '__main__':
     what = sys.argv[1] if len(sys.argv) > 1 else 'all'

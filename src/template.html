@@ -1,0 +1,551 @@
+<title>GabiãoCAD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: prancheta técnica — painel de dados à esquerda, desenho e resultados à direita */
+:root{
+  --bg:#E6EBEE; --panel:#F8FAFB; --panel2:#EEF2F4; --ink:#16212B; --muted:#596772; --line:#C6CFD6;
+  --accent:#A9611B; --accent-soft:#F3E3D2; --steel:#2F6A80; --stone:#8F999F; --stone2:#BCC4C8; --soil:#B39467; --soilbg:#E9DDC9;
+  --ok:#2C7A4B; --ok-soft:#DCEFE3; --warn:#9A6512; --warn-soft:#F6E8CC; --bad:#B0352C; --bad-soft:#F7DEDB;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10161B; --panel:#182027; --panel2:#1E2830; --ink:#E2E8EC; --muted:#93A1AB; --line:#2E3A45;
+  --accent:#E2964F; --accent-soft:#3A2A1A; --steel:#79AEC3; --stone:#6C777D; --stone2:#8E989D; --soil:#8C7553; --soilbg:#2A241B;
+  --ok:#62C38A; --ok-soft:#18301F; --warn:#E4B252; --warn-soft:#352914; --bad:#EA7166; --bad-soft:#3A1C19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10161B; --panel:#182027; --panel2:#1E2830; --ink:#E2E8EC; --muted:#93A1AB; --line:#2E3A45;
+  --accent:#E2964F; --accent-soft:#3A2A1A; --steel:#79AEC3; --stone:#6C777D; --stone2:#8E989D; --soil:#8C7553; --soilbg:#2A241B;
+  --ok:#62C38A; --ok-soft:#18301F; --warn:#E4B252; --warn-soft:#352914; --bad:#EA7166; --bad-soft:#3A1C19; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+button,input,select{font:inherit;color:inherit}
+.num,td.n,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+
+/* barra superior */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--panel);border-bottom:1px solid var(--line);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:24px;letter-spacing:.02em;display:flex;align-items:center;gap:8px;line-height:1}
+.brand svg{flex:none}
+.brand small{font-family:var(--f-mono);font-weight:400;font-size:11px;color:var(--muted);letter-spacing:.04em;margin-left:2px}
+#projName{flex:1 1 220px;min-width:0;border:1px solid transparent;background:transparent;border-radius:6px;padding:6px 8px;font-weight:500;font-size:15px}
+#projName:hover{border-color:var(--line)} #projName:focus{outline:none;border-color:var(--steel);background:var(--panel2)}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--steel)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#1a1208}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#1a1208}}
+.btn:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,.tab:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+.menu{position:relative}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;min-width:230px;z-index:20;display:grid;gap:2px}
+.menu-pop button{border:0;background:transparent;text-align:left;padding:8px 10px;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;gap:12px}
+.menu-pop button:hover{background:var(--panel2)}
+.menu-pop button span{color:var(--muted);font-family:var(--f-mono);font-size:11px}
+.menu-pop hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+
+/* estrutura */
+.app{display:grid;grid-template-columns:minmax(310px,380px) minmax(0,1fr);gap:16px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px;max-width:1500px;margin:0 auto}
+@media (max-width:900px){.app{grid-template-columns:minmax(0,1fr)}}
+.inputs{display:grid;gap:10px;align-content:start;min-width:0}
+.inputs>*{min-width:0}
+.work{display:grid;gap:14px;align-content:start;min-width:0}
+
+/* grupos de entrada */
+details.grp{background:var(--panel);border:1px solid var(--line);border-radius:8px}
+details.grp>summary{list-style:none;cursor:pointer;padding:10px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary h2{margin:0;white-space:nowrap;font-family:var(--f-display);font-weight:600;font-size:17px;letter-spacing:.04em;text-transform:uppercase}
+details.grp>summary .hint{color:var(--muted);font-size:12px;font-family:var(--f-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;text-align:right}
+details.grp>summary::after{content:"+";font-family:var(--f-mono);color:var(--muted)}
+details.grp[open]>summary::after{content:"–"}
+.grp-body{padding:2px 12px 12px;display:grid;gap:10px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.f{display:grid;gap:3px;min-width:0}
+.f label{font-size:12px;color:var(--muted)}
+.f label b{font-weight:600;color:var(--ink);font-family:var(--f-mono);font-size:12px}
+.inp{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--panel2);min-width:0}
+.inp:focus-within{border-color:var(--steel)}
+.inp.bad,.inp.bad:focus-within{border-color:var(--bad);background:var(--bad-soft)}
+.errmsg{font-size:11.5px;color:var(--bad);font-weight:500}
+.inp input,.inp select{border:0;background:transparent;padding:6px 8px;width:100%;min-width:0;font-family:var(--f-mono);font-size:13px}
+.inp input:focus,.inp select:focus{outline:none}
+.inp .u{padding-right:8px;color:var(--muted);font-size:11px;font-family:var(--f-mono);white-space:nowrap}
+.f.full{grid-column:1/-1}
+.note{font-size:12px;color:var(--muted);margin:0}
+.intro{margin:0;font-size:13px;line-height:1.5;padding:9px 11px;background:var(--panel2);border-radius:6px;border-left:3px solid var(--steel)}
+.help{font-size:11.5px;color:var(--muted);line-height:1.35}
+.presets{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.presets span{font-size:12px;color:var(--muted);margin-right:2px}
+.presets button{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer}
+.presets button:hover{border-color:var(--accent);color:var(--accent)}
+.presets button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.fillbox{display:grid;gap:8px;padding:10px;border:1px dashed var(--accent);border-radius:6px;background:var(--accent-soft)}
+.fillbox .help{color:var(--ink);opacity:.8}
+.unitbar{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.unitbar>span{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase}
+.unitbar .seg{flex:1}
+.derived{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);padding:8px 10px;background:var(--panel2);border-radius:6px}
+.derived b{color:var(--ink);font-family:var(--f-mono);font-weight:500}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--panel2);padding:6px 8px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.check{display:flex;gap:8px;align-items:center;font-size:13px}
+
+/* camadas */
+.layers{display:grid;gap:4px}
+.lrow{display:grid;grid-template-columns:38px .8fr .8fr 1.5fr 28px;gap:6px;align-items:center}
+.lrow .tag{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.lrow .tag.top::after{content:" topo";font-size:9px;letter-spacing:.05em}
+.lrow .tag.bot::after{content:" base";font-size:9px;letter-spacing:.05em}
+.lhead{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.x{border:1px solid var(--line);background:transparent;border-radius:5px;height:28px;cursor:pointer;color:var(--muted)}
+.x:hover{color:var(--bad);border-color:var(--bad)}
+.row-btns{display:flex;gap:6px;flex-wrap:wrap}
+.autogen{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;padding:8px;border:1px dashed var(--line);border-radius:6px}
+
+/* status */
+.status{display:grid;gap:10px}
+.banner{border-radius:8px;padding:10px 14px;display:flex;gap:10px;align-items:center;font-weight:500;border:1px solid}
+.banner.ok{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.banner.bad{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.banner.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.banner .txt{color:var(--ink);font-weight:400}
+.chips{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.chips.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1180px){.chips,.chips.four{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.chips,.chips.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:2px;position:relative;overflow:hidden}
+.chip::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line)}
+.chip.ok::before{background:var(--ok)} .chip.bad::before{background:var(--bad)} .chip.warn::before{background:var(--warn)}
+.chip .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.chip .v{font-family:var(--f-display);font-weight:700;font-size:28px;line-height:1.05}
+.chip .r{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.chip.ok .v{color:var(--ok)} .chip.bad .v{color:var(--bad)} .chip.warn .v{color:var(--warn)}
+
+/* área de desenho */
+.board{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:6px 6px 0;background:var(--panel2);flex-wrap:wrap}
+.tab{border:1px solid transparent;border-bottom:0;background:transparent;padding:7px 14px;border-radius:6px 6px 0 0;cursor:pointer;font-family:var(--f-display);font-size:16px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--panel);border-color:var(--line);color:var(--ink);margin-bottom:-1px}
+.view{padding:10px;min-width:0}
+.svgwrap{overflow-x:auto}
+.svgwrap svg{display:block;width:100%;height:auto}
+#vistaWrap svg{width:auto;max-width:none}
+#corteWrap svg{min-width:620px}
+.banner{flex-wrap:wrap}
+#view3d{position:relative;height:480px;max-height:70vh}
+#view3d canvas{display:block;width:100%;height:100%;border-radius:4px}
+.v3hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);background:var(--panel);padding:3px 8px;border-radius:4px;border:1px solid var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);padding:6px 4px 0}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:5px}
+
+/* resultados */
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:1100px){.results{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.card h3{margin:0 0 8px;font-family:var(--f-display);font-weight:600;font-size:18px;letter-spacing:.04em;text-transform:uppercase}
+.card h3 small{font-family:var(--f-body);font-weight:400;font-size:12px;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:6px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+td.n,th.n{text-align:right;white-space:nowrap}
+td.muted{color:var(--muted)}
+#tblExt th,#tblExt td{padding:6px 5px}
+#tblExt td:first-child{white-space:nowrap}
+tr.total td{font-weight:600;border-bottom:0}
+td.sub{padding-left:22px;color:var(--muted)}
+tr.grouphead td{padding-top:14px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+tr.fillrow td:first-child{box-shadow:inset 3px 0 0 var(--ok)}
+tr.riverrow td:first-child{box-shadow:inset 3px 0 0 #3a86c8}
+tr.gov td{background:var(--accent-soft)}
+#tblCases .help{font-size:12px}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;letter-spacing:.03em}
+.pill.cf{background:var(--accent-soft);color:var(--accent)} .inp.cfsel{border-color:var(--accent)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
+.kv span:nth-child(odd){color:var(--muted)}
+.kv span:nth-child(even){font-family:var(--f-mono);text-align:right}
+.premissas{font-size:12.5px;color:var(--muted);max-width:75ch}
+.premissas ul{margin:6px 0 0;padding-left:18px;display:grid;gap:3px}
+.explain{border:1px solid var(--line);border-radius:6px;background:var(--panel2)}
+.explain>summary{cursor:pointer;padding:7px 10px;font-size:13px;font-weight:600;color:var(--steel)}
+.explain-body{padding:0 12px 10px;font-size:12.5px;line-height:1.5;display:grid;gap:6px}
+.explain-body p{margin:0}
+.explain-body ul{margin:0;padding-left:18px;display:grid;gap:2px}
+.optbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:34px}
+.optbar .help{max-width:70ch}
+.optresult{display:grid;gap:10px;border-color:var(--ok)}
+.opthead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.opthead h3{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.optresult td:first-child{white-space:nowrap}
+.optnotes{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px;max-width:90ch}
+.aicard{display:grid;gap:10px}
+.aihead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.aihead h3{margin:0}
+.aigrid{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:12px}
+@media (max-width:640px){.aigrid{grid-template-columns:minmax(0,1fr)}}
+.drop{display:grid;place-content:center;text-align:center;gap:4px;min-height:130px;border:2px dashed var(--line);border-radius:8px;cursor:pointer;background:var(--panel2);padding:12px}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.dropmain{font-weight:600}
+.aiside{display:grid;gap:8px;min-width:0;align-content:start}
+.thumbs{display:flex;flex-wrap:wrap;gap:6px}
+.thumbs:empty{display:none}
+.thumb{position:relative;width:76px;height:76px;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;line-height:1}
+textarea{width:100%;border:1px solid var(--line);border-radius:6px;background:var(--panel2);padding:8px;font:inherit;resize:vertical;min-width:0}
+textarea:focus{outline:none;border-color:var(--steel)}
+.aikey{display:grid;gap:6px;padding:10px;border:1px dashed var(--steel);border-radius:6px}
+.aikeyrow{display:flex;gap:6px}.aikeyrow .inp{flex:1}
+.airesult{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.aires-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.aires-sum{margin:0;font-size:14px;max-width:80ch}
+.aicols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.aibox h4{margin:0 0 4px;font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.05em;text-transform:uppercase}
+.aibox ul{margin:0;padding-left:18px;display:grid;gap:3px;font-size:13px}
+.aifacts{display:flex;flex-wrap:wrap;gap:6px}
+.aifact{font-size:12px;padding:3px 9px;border-radius:99px;background:var(--panel2);border:1px solid var(--line)}
+.aifact b{font-family:var(--f-mono);font-weight:500}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;vertical-align:-2px;margin-right:6px}
+@media (prefers-reduced-motion: no-preference){.spinner{animation:spin 1s linear infinite}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);padding:9px 16px;border-radius:6px;font-size:13px;z-index:50;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion: no-preference){.chip,.banner{transition:background .2s,border-color .2s}}
+</style>
+
+<header class="bar">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lgIcon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF9E2C"/><stop offset="1" stop-color="#C45412"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="14" fill="url(#lgIcon)"/><g stroke="#141A1E" stroke-width="2.4" fill="#B0B8BC"><rect x="13" y="38" width="13" height="11"/><rect x="26" y="38" width="13" height="11"/><rect x="39" y="38" width="13" height="11"/><rect x="26" y="27" width="13" height="11"/><rect x="39" y="27" width="13" height="11"/><rect x="39" y="16" width="13" height="11"/></g><g stroke="#5A6268" stroke-width="1.1"><path d="M13 38l13 11M26 38l13 11M39 38l13 11M26 27l13 11M39 27l13 11M39 16l13 11"/></g><rect x="10" y="49" width="45" height="2.6" rx="1" fill="#5C3414"/><circle cx="19" cy="20" r="8" fill="#fff"/><circle cx="19" cy="20" r="6.3" fill="#2CA05A"/><path d="M15.8 20.2l2.2 2.3 4.4-4.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    GabiãoCAD <small>v0.5.1</small>
+  </div>
+  <input id="projName" aria-label="Nome do projeto" value="Muro de gabião, trecho 1">
+  <div class="actions">
+    <button class="btn" id="btnOpen" type="button">Abrir projeto</button>
+    <input type="file" id="fileOpen" accept=".json,application/json" hidden>
+    <div class="menu">
+      <button class="btn primary" id="btnExport" type="button" aria-haspopup="true" aria-expanded="false">Exportar</button>
+      <div class="menu-pop" id="exportMenu" hidden>
+        <button type="button" data-exp="pdf">Memorial de cálculo <span>.pdf</span></button>
+        <button type="button" data-exp="xlsx">Quantitativos e orçamento <span>.xlsx</span></button>
+        <hr>
+        <button type="button" data-exp="cortePng">Corte transversal <span>.png</span></button>
+        <button type="button" data-exp="vistaPng">Vista frontal <span>.png</span></button>
+        <button type="button" data-exp="corteSvg">Corte transversal <span>.svg</span></button>
+        <hr>
+        <button type="button" data-exp="json">Salvar projeto <span>.json</span></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="app">
+  <aside class="inputs" id="inputs">
+    <div class="unitbar"><span>Unidades</span>
+      <div class="seg" role="group" aria-label="Sistema de unidades">
+        <button type="button" data-units="t" aria-pressed="true">Toneladas (tf)</button>
+        <button type="button" data-units="kN" aria-pressed="false">kN</button>
+      </div>
+    </div>
+    <details class="grp" open>
+      <summary><h2>Geometria</h2><span class="hint" id="hGeo"></span></summary>
+      <div class="grp-body">
+        <div class="fields">
+          <div class="f"><label for="L">Comprimento do muro</label><div class="inp"><input id="L" type="number" min="1" step="0.5" data-k="L"><span class="u">m</span></div></div>
+          <div class="f"><label for="D">Embutimento (terreno à frente)</label><div class="inp"><input id="D" type="number" min="0" step="0.1" data-k="D"><span class="u">m</span></div></div>
+          <div class="f"><label for="batter">Inclinação do muro</label><div class="inp"><input id="batter" type="number" min="0" max="12" step="1" data-k="batter"><span class="u">graus</span></div></div>
+          <div class="f"><label for="boxLen">Comprimento da caixa</label><div class="inp"><select id="boxLen" data-k="boxLen"><option value="1.5">1,5 m</option><option value="2">2,0 m</option><option value="3">3,0 m</option><option value="4">4,0 m</option></select></div></div>
+          <div class="f full"><label>Degraus das camadas</label>
+            <div class="seg" role="group" aria-label="Posição dos degraus">
+              <button type="button" data-face="externa" aria-pressed="true">Na face (frente)</button>
+              <button type="button" data-face="interna" aria-pressed="false">No tardoz (atrás)</button>
+            </div>
+          </div>
+          <label class="check f full"><input type="checkbox" id="stagger" data-k="stagger"> Desencontrar juntas entre camadas (padrão: juntas alinhadas)</label>
+        </div>
+
+        <div>
+          <div class="lrow lhead"><span>Cam.</span><span>Larg. (m)</span><span>Alt. (m)</span><span>Caixas</span><span></span></div>
+          <div class="layers" id="layers"></div>
+        </div>
+        <div class="row-btns">
+          <button class="btn" type="button" id="addLayer">+ Camada no topo</button>
+        </div>
+        <p class="note"><b>Contraforte:</b> caixas atravessadas, com o comprimento entrando no aterro e 1,0 m de frente. A largura da camada é montada com caixas de catálogo (ex.: 3,0 m = uma caixa de 3,0; 5,0 m = 3,0 + 2,0).</p>
+        <div class="row-btns" hidden>
+        </div>
+        <div class="autogen">
+          <div class="f"><label for="agH">Altura desejada</label><div class="inp"><input id="agH" type="number" min="0.5" step="0.5" value="4"><span class="u">m</span></div></div>
+          <div class="f"><label for="agh">Caixas de</label><div class="inp"><select id="agh"><option value="1">1,0 m</option><option value="0.5">0,5 m</option></select></div></div>
+          <button class="btn" type="button" id="autoGen">Gerar</button>
+          <p class="note" style="grid-column:1/-1">Pré-dimensiona com base ≈ 0,6·H e reduz a largura até o topo. Depois ajuste camada a camada.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="grp" open>
+      <summary><h2>Solo do aterro</h2><span class="hint">a terra que o muro segura</span></summary>
+      <div class="grp-body">
+        <p class="intro">É o solo que fica <b>atrás do muro</b>. Ele empurra o gabião para a frente (é o <b>empuxo</b>). Quanto mais pesado e menos “firme” for esse solo, maior o empurrão e mais largo o muro precisa ser.</p>
+        <div class="presets" data-preset-group="aterro"><span>Tipo de solo:</span></div>
+        <div class="fields">
+          <div class="f"><label for="sg">Peso específico <b>γ</b></label><div class="inp"><input id="sg" type="number" data-u="dens" data-k="soil.gamma"><span class="u" data-unit="dens"></span></div><small class="help">Peso de 1 m³ do solo. Normal: <span class="uv" data-q="dens" data-v="1.7"></span> a <span class="uv" data-q="dens" data-v="2.0" data-unit-show="1"></span>.</small></div>
+          <div class="f"><label for="sphi">Ângulo de atrito <b>φ</b></label><div class="inp"><input id="sphi" type="number" step="1" data-k="soil.phi"><span class="u">°</span></div><small class="help">“Firmeza” do solo. Argila 22–28°, areia 30–36°.</small></div>
+          <div class="f"><label for="sdelta">Atrito solo-muro <b>δ</b></label><div class="inp"><input id="sdelta" type="number" step="1" data-k="soil.delta"><span class="u">°</span></div><small class="help">Atrito do solo contra o fundo do gabião. Com geotêxtil: 0,9·φ.</small></div>
+          <div class="f"><label for="sbeta">Inclinação do terreno <b>β</b></label><div class="inp"><input id="sbeta" type="number" step="1" min="0" data-k="soil.beta"><span class="u">°</span></div><small class="help">Terreno acima do muro. 0° = plano. Precisa ser menor que φ.</small></div>
+          <div class="f full"><label for="sq">Sobrecarga em cima do terreno <b>q</b></label><div class="inp"><input id="sq" type="number" min="0" data-u="press" data-k="soil.q"><span class="u" data-unit="press"></span></div><small class="help">Carga sobre o aterro: calçada ou pátio ≈ <span class="uv" data-q="press" data-v="0.5" data-unit-show="1"></span>, rua com carros ≈ <span class="uv" data-q="press" data-v="1.0" data-unit-show="1"></span>, caminhões ≈ <span class="uv" data-q="press" data-v="2.0" data-unit-show="1"></span>.</small></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="grp" open>
+      <summary><h2>Chuva e água</h2><span class="hint" id="hWater"></span></summary>
+      <div class="grp-body">
+        <p class="intro">Com chuva forte o aterro <b>encharca</b>: fica mais pesado e a água que não escoa se acumula atrás do muro. Essa água <b>empurra</b> o gabião e também faz <b>pressão por baixo</b> da base (subpressão), deixando o muro mais leve. É a situação mais perigosa para o muro.</p>
+        <label class="check"><input type="checkbox" id="won" data-k="water.on"> <b>Verificar com o solo molhado por chuva</b></label>
+        <div id="waterFields" class="grp-body" style="padding:0">
+          <div class="presets" data-preset-group="agua"><span>Drenagem:</span></div>
+          <div class="fields">
+            <div class="f"><label for="wg">Peso do solo encharcado</label><div class="inp"><input id="wg" type="number" data-u="dens" data-k="water.gsat"><span class="u" data-unit="dens"></span></div><small class="help">Solo saturado pesa mais: em geral <span class="uv" data-q="dens" data-v="1.9"></span> a <span class="uv" data-q="dens" data-v="2.1" data-unit-show="1"></span>.</small></div>
+            <div class="f"><label for="wh">Altura da água atrás do muro</label><div class="inp"><input id="wh" type="number" step="0.1" min="0" data-k="water.hw"><span class="u">m</span></div><small class="help">Medida a partir da base do muro (frente). O muro tem <b id="wHt"></b> de altura.</small></div>
+          </div>
+          <p class="help">Para a água não subir: geotêxtil no tardoz, dreno de pé (tubo perfurado com brita) atrás da base e canaleta no topo para desviar a enxurrada.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary><h2>Leito de rio</h2><span class="hint" id="hRiver"></span></summary>
+      <div class="grp-body">
+        <p class="intro">Use quando o muro fica na <b>margem ou dentro do leito</b> de um rio ou córrego. A água muda o cálculo de três jeitos: deixa as pedras <b>mais leves</b> (o gabião “boia” um pouco), empurra o muro quando o <b>rio baixa rápido</b> e o aterro continua cheio d'água, e <b>cava o chão</b> na frente do muro (erosão ou socavação).</p>
+        <label class="check"><input type="checkbox" id="ron" data-k="river.on"> <b>Muro em leito ou margem de rio</b></label>
+        <div id="riverFields" class="grp-body" style="padding:0">
+          <div class="fields">
+            <div class="f"><label for="rhn">Nível normal do rio</label><div class="inp"><input id="rhn" type="number" step="0.1" min="0" data-k="river.hn"><span class="u">m</span></div><small class="help">Altura da água no dia a dia, medida a partir da base do muro.</small></div>
+            <div class="f"><label for="rhc">Nível na cheia</label><div class="inp"><input id="rhc" type="number" step="0.1" min="0" data-k="river.hc"><span class="u">m</span></div><small class="help">Maior cheia conhecida (marcas nas árvores, relato dos moradores, dados da prefeitura).</small></div>
+            <div class="f"><label for="rv">Velocidade da água na cheia</label><div class="inp"><input id="rv" type="number" step="0.5" min="0" data-k="river.v"><span class="u">m/s</span></div><small class="help">Córrego calmo 1 a 2; rio forte 3 a 4; enxurrada de montanha 5 ou mais.</small></div>
+            <div class="f"><label for="rds">Erosão prevista no pé</label><div class="inp"><input id="rds" type="number" step="0.1" min="0" data-k="river.ds"><span class="u">m</span></div><small class="help">Quanto o rio pode cavar o fundo na frente do muro durante a cheia. Sem estudo, use cerca de 1,0 m.</small></div>
+          </div>
+          <label class="check"><input type="checkbox" id="rap" data-k="river.apron"> Colocar <b>colchão de gabião</b> no pé do muro</label>
+          <div id="apronFields" class="fields">
+            <div class="f"><label for="rlc">Largura do colchão (saindo do muro)</label><div class="inp"><input id="rlc" type="number" step="0.5" min="0" data-k="river.lc"><span class="u">m</span></div><small class="help">Pelo menos 1,5 × a erosão prevista. Quando o rio cava, o colchão dobra e protege a base.</small></div>
+            <div class="f"><label for="resp">Espessura do colchão</label><div class="inp"><select id="resp" data-k="river.esp"><option value="0.17">0,17 m</option><option value="0.23">0,23 m</option><option value="0.3">0,30 m</option></select></div><small class="help">Mais rápida a água, mais grosso o colchão.</small></div>
+          </div>
+          <p class="help">O programa verifica três casos e usa o pior: <b>rio normal</b>, <b>cheia</b> e <b>rebaixamento rápido</b> (o rio baixa depois da cheia e a água fica presa no aterro, que costuma ser o caso mais perigoso). Em contato com água, use tela com <b>revestimento em PVC</b>, pedras que não se desfazem na água e geotêxtil atrás do muro.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="grp" open>
+      <summary><h2>Fundação</h2><span class="hint">o chão onde o muro apoia</span></summary>
+      <div class="grp-body">
+        <p class="intro">É o solo <b>embaixo do muro</b>. Ele precisa segurar o peso do gabião sem afundar e ter atrito para o muro não escorregar. O ideal é ter <b>sondagem SPT</b> do local.</p>
+        <div class="presets" data-preset-group="fundacao"><span>Tipo de solo:</span></div>
+        <div class="fields">
+          <div class="f"><label for="fphi">Atrito na base <b>φ</b></label><div class="inp"><input id="fphi" type="number" step="1" data-k="found.phi"><span class="u">°</span></div><small class="help">Segura o muro contra o deslizamento.</small></div>
+          <div class="f"><label for="fc">Adesão na base <b>c</b></label><div class="inp"><input id="fc" type="number" min="0" data-u="press" data-k="found.c"><span class="u" data-unit="press"></span></div><small class="help">Coesão do solo na base. Por segurança, deixe 0.</small></div>
+          <div class="f full"><label for="fs">Tensão admissível do solo <b>σ adm</b></label><div class="inp"><input id="fs" type="number" min="0.1" data-u="press" data-k="found.sadm"><span class="u" data-unit="press"></span></div><small class="help">Quanto 1 m² do solo aguenta sem afundar. Regra prática com SPT: σ adm ≈ <span class="uv" data-q="press" data-v="2"></span> × N (<span data-unit="press"></span>), com N médio na cota da base.</small></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary><h2>Gabião</h2><span class="hint" id="hGab"></span></summary>
+      <div class="grp-body">
+        <p class="intro">A caixa de tela preenchida com <b>pedra de mão</b>. O peso do muro vem da pedra, descontando os vazios entre elas. Use pedras de 10 a 20 cm, maiores que a abertura da malha (8×10 cm).</p>
+        <div class="presets" data-preset-group="rocha"><span>Rocha:</span></div>
+        <div class="fields">
+          <div class="f"><label for="gs">Peso específico da rocha</label><div class="inp"><input id="gs" type="number" data-u="dens" data-k="gab.gs"><span class="u" data-unit="dens"></span></div><small class="help">Peso da pedra maciça, sem vazios.</small></div>
+          <div class="f"><label for="gn">Porosidade (vazios)</label><div class="inp"><input id="gn" type="number" step="0.01" min="0.2" max="0.45" data-k="gab.n"><span class="u">0 a 1</span></div><small class="help">Bem arrumada: 0,30. Jogada: 0,40.</small></div>
+        </div>
+        <div class="derived" id="gabDerived"></div>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary><h2>Escavação e aterro</h2><span class="hint">terra a tirar e a colocar</span></summary>
+      <div class="grp-body">
+        <p class="intro">Calcula o volume de terra a escavar para assentar o muro e o volume de <b>reaterro</b> (terra que volta, compactada, atrás e na frente do muro).</p>
+        <div class="fields">
+          <div class="f full"><label>Situação do terreno</label>
+            <div class="seg" role="group" aria-label="Situação">
+              <button type="button" data-scen="corte" aria-pressed="true">Corte</button>
+              <button type="button" data-scen="aterro" aria-pressed="false">Aterro</button>
+            </div>
+            <small class="help" id="scenHelp"></small>
+          </div>
+          <div class="f"><label for="ef">Folga de trabalho</label><div class="inp"><input id="ef" type="number" step="0.1" min="0" data-k="exc.folga"><span class="u">m</span></div><small class="help">Espaço livre na frente e atrás para montar as caixas. Normal: 0,5 m.</small></div>
+          <div class="f"><label for="em">Talude da vala</label><div class="inp"><input id="em" type="number" step="0.1" min="0" data-k="exc.m"><span class="u">H : 1V</span></div><small class="help">Metros na horizontal para cada 1 m de altura. Solo firme 0,5; arenoso 1,0 a 1,5.</small></div>
+            <div class="f"><label for="fe">Empolamento da terra</label><div class="inp"><input id="fe" type="number" step="0.05" min="1" data-k="exc.fill.emp"><span class="u">× volume</span></div><small class="help">Terra solta ocupa mais que compactada. 1 m³ no terreno ou compactado vira cerca de 1,25 m³ no caminhão (argila 1,30 a 1,40; areia 1,10 a 1,15).</small></div>
+            <div class="f"><label for="fcap">Capacidade do caminhão</label><div class="inp"><input id="fcap" type="number" step="1" min="1" data-k="exc.fill.cap"><span class="u">m³</span></div><small class="help">Volume de terra solta por viagem. As viagens somam o reaterro da vala e o aterro do vazio. Caçamba truck: 12 a 14 m³; toco: 6 m³.</small></div>
+        </div>
+        <div class="fillbox" id="fillBox">
+          <label class="check"><input type="checkbox" id="fon" data-k="exc.fill.on"> <b>Aterrar o vazio atrás do muro depois</b></label>
+          <p class="help">Para quando você monta o gabião primeiro e depois preenche com terra o espaço entre o muro e o barranco (ou até onde o aterro vai). O aterro é feito até a altura do topo do muro, seguindo a inclinação β do terreno.</p>
+          <div class="fields" id="fillFields">
+            <div class="f"><label for="fa">Distância até o barranco</label><div class="inp"><input id="fa" type="number" step="0.5" min="0" data-k="exc.fill.a"><span class="u">m</span></div><small class="help">Do fundo do muro até o pé do barranco, medida no chão.</small></div>
+            <div class="f"><label for="fm">Inclinação do barranco</label><div class="inp"><input id="fm" type="number" step="0.1" min="0" data-k="exc.fill.m"><span class="u">H : 1V</span></div><small class="help">0 = barranco vertical. 1,0 = 45°. Sem barranco, use a inclinação da borda do aterro (1,5).</small></div>
+
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary><h2>Geotêxtil</h2><span class="hint">manta filtrante</span></summary>
+      <div class="grp-body">
+        <p class="intro">Manta <b>não tecida</b> colocada entre o gabião e a terra. Ela deixa a água passar mas segura o solo, para a terra não escorrer pelas pedras e o aterro não afundar.</p>
+        <div class="fields">
+          <div class="f"><label for="go">Sobreposição nas emendas</label><div class="inp"><input id="go" type="number" step="1" min="0" data-k="geo.overlap"><span class="u">%</span></div><small class="help">Perda com emendas de 20 a 30 cm. Normal: 10 a 15%.</small></div>
+          <label class="check f" style="align-self:center"><input type="checkbox" id="gb" data-k="geo.base"> Colocar também na base</label>
+          <small class="help f full">Na base, use quando a fundação for de solo fino ou úmido (argila, silte). O cálculo inclui 0,5 m de ancoragem no topo e na base.</small>
+        </div>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary><h2>Critérios</h2><span class="hint">NBR 11682</span></summary>
+      <div class="grp-body"><div class="fields">
+        <div class="f"><label for="fsd">FS mínimo deslizamento</label><div class="inp"><input id="fsd" type="number" step="0.1" min="1" data-k="fs.desl"></div></div>
+        <div class="f"><label for="fst">FS mínimo tombamento</label><div class="inp"><input id="fst" type="number" step="0.1" min="1" data-k="fs.tomb"></div></div>
+        <div class="f"><label for="fsg">FS mínimo estabilidade global</label><div class="inp"><input id="fsg" type="number" step="0.1" min="1" data-k="fs.glob"></div></div>
+        <label class="check f full"><input type="checkbox" id="fgon" data-k="fs.globOn"> Verificar estabilidade global</label>
+        <details class="explain f full">
+          <summary>Quando usar a estabilidade global?</summary>
+          <div class="explain-body">
+            <p>As outras quatro verificações olham só o muro: se ele escorrega, tomba ou afunda. A estabilidade global olha o <b>terreno inteiro</b>: se uma fatia grande de solo, com o muro junto, pode escorregar por uma superfície curva que passa por baixo da base.</p>
+            <p><b>Deixe ligada sempre que houver qualquer um destes casos:</b></p>
+            <ul>
+              <li>Muro com 3 m de altura ou mais.</li>
+              <li>Fundação em argila mole, silte, aterro antigo ou solo que você não conhece (ângulo de atrito abaixo de 25°).</li>
+              <li>Terreno inclinado acima do muro (β maior que 0°) ou encosta que continua descendo na frente.</li>
+              <li>Água: chuva forte, nascente, lençol alto ou margem de rio.</li>
+              <li>Embutimento pequeno (base pouco enterrada) ou muros escalonados, um acima do outro.</li>
+              <li>Obra perto de casas, ruas ou onde uma ruptura causaria dano a pessoas.</li>
+            </ul>
+            <p><b>Pode desligar quando:</b></p>
+            <ul>
+              <li>A estabilidade global já foi verificada em outro programa (ex.: estudo de taludes do projeto).</li>
+              <li>O muro é baixo (até 2 m), em terreno plano e firme, sem água, e a fundação é rocha ou solo resistente.</li>
+              <li>Você quer só comparar rapidamente alternativas de muro e vai verificar a global no final.</li>
+            </ul>
+            <p>Na dúvida, deixe ligada. A NBR 11682 pede fator de segurança de pelo menos 1,5 para a estabilidade global.</p>
+          </div>
+        </details>
+      </div>
+      <p class="note">Valores padrão da NBR 11682 (deslizamento 1,5, tombamento 2,0 e estabilidade global 1,5; a norma pode pedir mais conforme o risco da obra). A capacidade de carga é verificada pela tensão admissível informada.</p>
+      </div>
+    </details>
+    <div class="row-btns"><button class="btn" type="button" id="resetBtn">Restaurar exemplo</button></div>
+    <div id="resetConfirm" class="derived" hidden>Isso substitui todos os dados pelo exemplo. <button class="btn" type="button" id="resetYes">Substituir</button> <button class="btn" type="button" id="resetNo">Cancelar</button></div>
+  </aside>
+
+  <section class="work">
+    <div class="status">
+      <div class="banner" id="banner"></div>
+      <div class="chips" id="chips"></div>
+      <div class="optbar" id="optBar"></div>
+      <div class="card optresult" id="optResult" hidden></div>
+    </div>
+
+    <section class="card aicard" id="aiCard">
+      <div class="aihead">
+        <h3>Analisar foto do local</h3>
+        <span class="help">Envie fotos do barranco, da margem ou do problema. O Claude sugere como fazer o gabião ali e pode preencher o projeto.</span>
+      </div>
+      <div id="aiUnavailable" class="help" hidden></div>
+      <div id="aiBody">
+        <div id="aiKeyBox" class="aikey" hidden>
+          <p class="help">No programa instalado, a análise usa a <b>API da Anthropic</b>, cobrada à parte por uso (cada análise custa poucos centavos de dólar). Crie uma chave em <b>console.anthropic.com</b> → API Keys e cole aqui. Ela fica guardada criptografada só neste computador.</p>
+          <div class="aikeyrow"><div class="inp"><input id="aiKey" type="password" placeholder="sk-ant-..." autocomplete="off"></div><button class="btn" type="button" id="aiKeySave">Salvar chave</button></div>
+        </div>
+        <div class="aigrid">
+          <label class="drop" id="aiDrop" for="aiFiles">
+            <input type="file" id="aiFiles" accept="image/jpeg,image/png,image/webp" multiple hidden>
+            <span class="dropmain">Clique ou arraste fotos aqui</span>
+            <span class="help">até 4 fotos · JPG, PNG ou WebP</span>
+          </label>
+          <div class="aiside">
+            <div class="thumbs" id="aiThumbs"></div>
+            <div class="f"><label for="aiNotes">O que você sabe do local (opcional)</label>
+              <textarea id="aiNotes" rows="3" placeholder="Ex.: barranco de uns 3 m que desmoronou na chuva, solo argiloso, tem um córrego na frente, preciso de uns 25 m de muro."></textarea></div>
+            <div class="row-btns"><button class="btn primary" type="button" id="aiGo" disabled>Analisar fotos</button><button class="btn" type="button" id="aiStop" hidden>Parar</button><span class="help" id="aiStatus"></span></div>
+          </div>
+        </div>
+        <div id="aiResult" class="airesult" hidden></div>
+      </div>
+    </section>
+
+    <div class="board">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-view="corte" type="button">Corte</button>
+        <button class="tab" role="tab" aria-selected="false" data-view="vista" type="button">Vista frontal</button>
+        <button class="tab" role="tab" aria-selected="false" data-view="3d" type="button">3D</button>
+      </div>
+      <div class="view" id="viewCorte">
+        <div class="svgwrap" id="corteWrap"></div>
+        <div class="legend">
+          <span><i style="border-color:var(--accent);border-top-style:dashed"></i>Escavação</span>
+          <span><i style="border-color:var(--steel);border-top-style:dashed"></i>Geotêxtil</span>
+          <span id="legGlob"><i style="border-color:#7b4fc9;border-top-style:dashed"></i>Ruptura global</span>
+          <span id="legWater" hidden><i style="border-color:#3a86c8;border-top-width:3px"></i>Água (rio / chuva)</span>
+          <span id="legFill" hidden><i style="border-color:var(--ok);border-top-width:6px;opacity:.6"></i>Aterro do vazio (depois do muro)</span>
+          <span><i style="border-color:var(--bad)"></i>Empuxo ativo Ea</span>
+          <span><i style="border-color:var(--ink)"></i>Peso W</span>
+        </div>
+      </div>
+      <div class="view" id="viewVista" hidden><div class="svgwrap" id="vistaWrap"></div></div>
+      <div class="view" id="view3dWrap" hidden><div id="view3d"><span class="v3hint">Arraste para girar · role para aproximar</span></div></div>
+    </div>
+
+    <div class="results">
+      <div class="card">
+        <h3>Estabilidade externa <small>na base do muro</small></h3>
+        <div class="tbl"><table id="tblExt"></table></div>
+        <div class="kv" id="forces" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h3>Quantitativos <small id="qtSub"></small></h3>
+        <div class="tbl"><table id="tblQt"></table></div>
+      </div>
+      <div class="card" style="grid-column:1/-1" id="casesCard" hidden>
+        <h3>Casos com água <small>o pior caso é o usado nos resultados acima</small></h3>
+        <div class="tbl"><table id="tblCases"></table></div>
+      </div>
+      <div class="card" style="grid-column:1/-1">
+        <h3>Verificação interna <small>entre camadas de gabião</small></h3>
+        <div class="tbl"><table id="tblInt"></table></div>
+      </div>
+    </div>
+
+    <div class="card premissas">
+      <h3>Premissas do cálculo</h3>
+      <ul>
+        <li>Empuxo ativo pela teoria de Coulomb, aplicado num plano virtual que liga o calcanhar ao canto superior do tardoz. O solo apoiado sobre os degraus soma-se ao peso do muro.</li>
+        <li>Sem as opções de chuva ou rio, o aterro é considerado drenado. No leito de rio, as pedras abaixo do nível da frente têm o peso reduzido pelo empuxo da água; a pressão da água atrás e a subpressão usam a diferença entre o nível no aterro e o nível do rio. Erosão: colchão com largura de pelo menos 1,5 × a erosão prevista; espessura indicada pela velocidade conforme tabelas de fabricantes (até 3 m/s 0,17 m; até 4 m/s 0,23 m; até 5 m/s 0,30 m; acima disso, gabião caixa). Com chuva: solo saturado acima e submerso abaixo do nível d'água, pressão da água no tardoz e subpressão na base variando do nível d'água atrás até zero na frente; a água dentro dos vazios do gabião não é somada ao peso (a favor da segurança). Conversão de unidades: 1 tf = 9,81 kN. O empuxo passivo do embutimento é desprezado (a favor da segurança).</li>
+        <li>Seções internas: atrito entre camadas φ* = 25·γg − 10 e tensão admissível do gabião τ = 50·γg − 30 (γg em tf/m³, τ em tf/m²), conforme a prática dos fabricantes de gabião.</li>
+        <li>Estabilidade global: método de Bishop simplificado, procurando automaticamente o círculo de ruptura mais crítico que passa por baixo do muro (muro, aterro e fundação deslizando juntos). A fundação é considerada um solo único e homogêneo; com camadas de solo diferentes ou solo mole em profundidade, confira em um programa de taludes. Com água, o lençol vai do nível no aterro ao nível na frente (ou à cota da base, sem rio).</li>
+        <li>Esta ferramenta serve para pré-dimensionamento e conferência. O projeto executivo exige engenheiro responsável e ART.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/*FONTS*/
+</script>
+<script>
+/*CALC*/
+</script>
+<script>
+/*APP*/
+</script>

@@ -1,0 +1,64 @@
+{
+  "name": "gabiaocad",
+  "productName": "GabiaoCAD",
+  "version": "0.2.3",
+  "description": "Projeto e verificação de muros de gabião",
+  "author": "GabiaoCAD",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --win dir --x64"
+  },
+  "build": {
+    "appId": "br.gabiaocad.app",
+    "productName": "GabiaoCAD",
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "dir"
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GabiãoCAD",
+      "artifactName": "GabiaoCAD-Setup-${version}.exe",
+      "language": "1046",
+      "installerLanguages": [
+        "pt_BR"
+      ],
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "fileAssociations": [
+      {
+        "ext": "gabiao",
+        "name": "Projeto GabiãoCAD",
+        "description": "Projeto de muro de gabião"
+      }
+    ],
+    "afterPack": "./afterPack.js",
+    "electronLanguages": [
+      "pt-BR",
+      "en-US"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "resedit": "^2.0.3"
+  },
+  "dependencies": {}
+}

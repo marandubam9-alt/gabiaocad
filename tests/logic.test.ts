@@ -1,0 +1,30 @@
+import { createHmac } from 'node:crypto';
+import assert from 'node:assert/strict';
+import { infoPlano, emailEstudante, corpoAssinatura, lerReferencia, atualizacaoPerfil, assinaturaValida } from '../supabase/functions/_shared/logic.ts';
+
+const agora = new Date('2026-10-22T12:00:00Z');
+assert.equal(infoPlano(null).premium, false);
+assert.deepEqual([infoPlano({ plano: 'gratis', premium_ate: null }, agora).limite, infoPlano({ plano: 'gratis', premium_ate: null }, agora).modelo], [3, 'claude-haiku-5-5']);
+const pAtivo = infoPlano({ plano: 'premium', premium_ate: '2026-11-30T00:00:00Z' }, agora);
+assert.equal(pAtivo.premium, true); assert.equal(pAtivo.limite, 150); assert.equal(pAtivo.modelo, 'claude-sonnet-5-5');
+assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-10-01T00:00:00Z' }, agora).premium, false, 'vencido');
+assert.equal(infoPlano({ plano: 'institucional', premium_ate: null }, agora).premium, true, 'sem data = sem vencimento');
+assert.ok(emailEstudante('ana@usp.edu.br')); assert.ok(emailEstudante('joao@aluno.ufmg.edu.br')); assert.ok(!emailEstudante('joao@gmail.com'));
+const uid = '11111111-1111-1111-1111-111111111111';
+const c = corpoAssinatura('anual', uid, 'a@b.com', 'https://gabiaocad.com.br/');
+assert.equal(c.auto_recurring.frequency, 12); assert.equal(c.auto_recurring.transaction_amount, 349); assert.equal(c.back_url, 'https://gabiaocad.com.br/app/?assinatura=retorno'); assert.equal(c.status, 'pending');
+assert.deepEqual(lerReferencia(`${uid}|mensal`), { userId: uid, opcao: 'mensal' });
+assert.equal(lerReferencia('qualquer|mensal'), null); assert.equal(lerReferencia(`${uid}|vitalicio`), null);
+const up = atualizacaoPerfil({ id: 'pre1', status: 'authorized', external_reference: `${uid}|mensal`, next_payment_date: '2026-11-22T12:00:00Z' }, agora)!;
+assert.equal(up.userId, uid); assert.equal(up.campos.plano, 'premium'); assert.equal(up.campos.premium_ate, '2026-11-27T12:00:00.000Z');
+const upE = atualizacaoPerfil({ id: 'pre2', status: 'authorized', external_reference: `${uid}|estudante` }, agora)!;
+assert.equal(upE.campos.plano, 'estudante');
+const can = atualizacaoPerfil({ id: 'pre1', status: 'cancelled', external_reference: `${uid}|mensal` }, agora)!;
+assert.equal(can.campos.plano, undefined, 'cancelar não tira o acesso já pago'); assert.equal(can.campos.mp_status, 'cancelled');
+// assinatura do webhook, calculada como o Mercado Pago faz
+const segredo = 'segredo-teste', ts = '1704908010', reqId = 'abc-123', dataId = 'ABC999';
+const v1 = createHmac('sha256', segredo).update(`id:${dataId.toLowerCase()};request-id:${reqId};ts:${ts};`).digest('hex');
+assert.equal(await assinaturaValida(`ts=${ts},v1=${v1}`, reqId, dataId, segredo), true);
+assert.equal(await assinaturaValida(`ts=${ts},v1=${v1}`, reqId, 'OUTRO', segredo), false);
+assert.equal(await assinaturaValida(null, reqId, dataId, segredo), false);
+console.log('logic: todos os testes passaram');

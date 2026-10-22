@@ -1,0 +1,20 @@
+{
+  "name": "gabiaocad-web",
+  "private": true,
+  "version": "0.6.0",
+  "description": "GabiãoCAD — bibliotecas usadas para montar o site e o programa",
+  "scripts": {
+    "build": "python3 scripts/build.py",
+    "test": "node --experimental-strip-types --no-warnings tests/logic.test.ts"
+  },
+  "dependencies": {
+    "three": "0.128.0",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.8.2",
+    "exceljs": "4.4.0",
+    "@supabase/supabase-js": "2.45.4",
+    "@fontsource/ibm-plex-sans": "5.1.0",
+    "@fontsource/ibm-plex-mono": "5.1.0",
+    "@fontsource/barlow-condensed": "5.1.0"
+  }
+}

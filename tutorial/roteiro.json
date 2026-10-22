@@ -1,0 +1,23 @@
+[
+ {"id": "s00", "legenda": "", "fala": "Olá! Neste vídeo você vai aprender a projetar um muro de gabião no Gabião Cad, em poucos minutos."},
+ {"id": "s01", "legenda": "Na esquerda ficam os <b>dados do muro</b>. Na direita, os <b>resultados e desenhos</b>, que atualizam na hora.", "fala": "Do lado esquerdo ficam os dados do muro. Do lado direito, os resultados e os desenhos, que se atualizam na hora."},
+ {"id": "s02", "legenda": "<span class=\"n\">1</span>Dê um <b>nome</b> ao projeto", "fala": "Primeiro, dê um nome ao projeto."},
+ {"id": "s03", "legenda": "<span class=\"n\">2</span>Digite a <b>altura do muro</b> e clique em <b>Gerar</b>", "fala": "Depois, digite a altura do muro e clique em Gerar."},
+ {"id": "s04", "legenda": "O programa monta as <b>camadas de caixas</b>. Você pode mudar a <b>largura e a altura</b> de cada uma.", "fala": "O programa monta as camadas de caixas automaticamente. Você pode mudar a largura e a altura de cada uma."},
+ {"id": "s05", "legenda": "A camada da base pode ser <b>contraforte</b>: caixas atravessadas, entrando no aterro.", "fala": "A camada da base pode ser de contraforte, com as caixas atravessadas, entrando no aterro."},
+ {"id": "s06", "legenda": "<span class=\"n\">3</span>Escolha o <b>solo do aterro</b>: a terra que fica atrás do muro", "fala": "Agora, escolha o tipo de solo do aterro, que é a terra que fica atrás do muro."},
+ {"id": "s07", "legenda": "E o <b>solo da fundação</b>: o chão onde o muro vai apoiar", "fala": "E escolha o solo da fundação: o chão onde o muro vai apoiar."},
+ {"id": "s08", "legenda": "<span class=\"n\">4</span>Confira as <b>verificações</b>: <b>verde</b> passou, <b>vermelho</b> não passou", "fala": "No alto da tela, confira as verificações. Verde quer dizer que passou. Vermelho, que não passou."},
+ {"id": "s09", "legenda": "Aqui a <b>estabilidade global</b> não passou: o terreno em volta pode romper junto com o muro.", "fala": "Neste exemplo, a estabilidade global não passou. Isso quer dizer que o terreno em volta pode romper junto com o muro."},
+ {"id": "s10", "legenda": "<span class=\"n\">5</span>Clique em <b>Ajustar para passar</b>: o programa procura a solução mais econômica com caixas inteiras", "fala": "Clique em Ajustar para passar. O programa procura sozinho a solução mais econômica, usando só caixas inteiras."},
+ {"id": "s11", "legenda": "Pronto: <b>muro estável</b>. A tabela mostra o que mudou, e dá para <b>desfazer</b> se quiser.", "fala": "Pronto, o muro ficou estável. A tabela mostra o que mudou, e você pode desfazer, se quiser."},
+ {"id": "s12", "legenda": "<span class=\"n\">6</span>Veja o muro em <b>corte</b>, com o empuxo, o peso e a linha de ruptura", "fala": "No corte, você vê o empuxo do solo, o peso do muro e a linha de ruptura."},
+ {"id": "s13", "legenda": "Na <b>vista frontal</b> aparecem as caixas ao longo do comprimento", "fala": "Na vista frontal, aparecem as caixas ao longo de todo o comprimento."},
+ {"id": "s14", "legenda": "E no <b>3D</b> você gira com o mouse para apresentar ao cliente", "fala": "E na vista em três dimensões, você gira o muro com o mouse, para apresentar ao cliente."},
+ {"id": "s15", "legenda": "<span class=\"n\">7</span>Em <b>Chuva e água</b>, marque quando o aterro pode ficar <b>encharcado</b>", "fala": "Em Chuva e água, marque esta opção quando o aterro puder ficar encharcado."},
+ {"id": "s16", "legenda": "O programa refaz tudo na hora com o <b>peso da água</b>. Se ficar vermelho, use <b>Ajustar para passar</b> de novo.", "fala": "O programa refaz todos os cálculos com o peso da água. Se alguma verificação ficar vermelha, use Ajustar para passar de novo."},
+ {"id": "s17", "legenda": "<span class=\"n\">8</span>Os <b>quantitativos</b> saem prontos: caixas, pedra, escavação, aterro, manta e <b>viagens de caminhão</b>", "fala": "Os quantitativos saem prontos: caixas, pedra, escavação, aterro, manta geotêxtil, e até as viagens de caminhão."},
+ {"id": "s18", "legenda": "<span class=\"n\">9</span>Em <b>Exportar</b> você baixa o <b>memorial em PDF</b> e a <b>planilha de quantitativos</b>", "fala": "Por fim, em Exportar, você baixa o memorial de cálculo em PDF e a planilha de quantitativos."},
+ {"id": "s19", "legenda": "Dica: em <b>Analisar foto do local</b>, envie fotos do barranco e receba uma sugestão de projeto.", "fala": "Uma dica: em Analisar foto do local, envie fotos do barranco e receba uma sugestão de projeto."},
+ {"id": "s20", "legenda": "", "fala": "Agora é com você. Crie sua conta e teste o Gabião Cad grátis, por três horas de uso. Bons projetos!"}
+]

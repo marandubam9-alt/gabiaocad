@@ -131,8 +131,8 @@ footer a{color:#fff}
 
 <section id="tutorial" class="alt">
   <div class="wrap">
-    <h2>Veja como usar em 2 minutos</h2>
-    <p class="lead">Do nome do projeto ao memorial em PDF, passo a passo.</p>
+    <h2>Veja como usar o GabiãoCAD</h2>
+    <p class="lead">Do nome do projeto ao memorial em PDF, passo a passo, com narração. Depois, cada campo e cada tabela explicados: <a href="#" data-t="0">início rápido</a> · <a href="#" data-t="143">campos</a> · <a href="#" data-t="454">resultados</a>.</p>
     <video class="tut" controls preload="none" playsinline poster="assets/tutorial-capa.webp" width="1280" height="720"><source src="assets/tutorial.mp4" type="video/mp4">Seu navegador não toca vídeo. <a href="assets/tutorial.mp4">Baixe o vídeo</a>.</video>
   </div>
 </section>
@@ -213,5 +213,6 @@ footer a{color:#fff}
   </div>
 </footer>
 <script>document.getElementById('ano').textContent = new Date().getFullYear();</script>
+<script>document.querySelectorAll('[data-t]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); const v = document.querySelector('video.tut'); v.currentTime = +a.dataset.t; v.play().catch(() => {}); }));</script>
 </body>
 </html>

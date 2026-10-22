@@ -80,7 +80,7 @@
   const acct = document.createElement('div'); acct.className = 'acct';
   document.querySelector('.bar .actions').prepend(acct);
   function renderAcct() {
-    const tut = '<button class="btn" type="button" id="tutBtn" title="Vídeo de 2 minutos ensinando a usar">▶ Como usar</button>';
+    const tut = '<button class="btn" type="button" id="tutBtn" title="Vídeo ensinando a usar o programa, com capítulos">▶ Como usar</button>';
     if (!ON) { acct.innerHTML = tut; document.getElementById('tutBtn').onclick = tutorialDialog; return; }
     const badge = PLAN.premium ? `<span class="planbadge pro">${PLAN.plano === 'estudante' ? 'Estudante' : 'Premium'}</span>`
       : `<span class="planbadge teste ${restante() <= 20 * 60 ? 'fim' : ''}" id="testeBadge" title="Tempo de teste que ainda resta. Clique para ver os planos.">${PLAN.estado === 'teste' ? 'Teste · ' + fmtTempo(restante()) : 'Teste encerrado'}</span>`;
@@ -145,7 +145,7 @@
           <ul class="ok"><li>Muro de gabião completo: cálculo, corte, vista e 3D</li><li>Estabilidade, chuva, leito de rio e estabilidade global</li><li>Memorial em PDF e quantitativos</li><li>5 análises de foto do local com sugestão de projeto</li></ul>
           <p class="help">Sem cartão de crédito. São 3 horas de uso: o tempo só conta enquanto o programa está aberto e você está usando.${DESK ? ' O programa precisa de internet para entrar na conta.' : ''}</p>
           <div class="login"></div></div>
-          <div style="display:grid;gap:8px">${videoTag(false)}<span class="help">Veja em 2 minutos como montar um muro no programa.</span></div></div>
+          <div style="display:grid;gap:8px">${videoTag(false)}<span class="help">Veja como montar um muro no programa. A segunda parte explica cada campo e cada tabela.</span></div></div>
         ${rodape}</div>`;
       loginForm(gate.querySelector('.login'));
     } else if (PLAN.estado === 'expirado') {
@@ -173,10 +173,14 @@
     avisouFim = true;
     setTimeout(() => plansDialog(`Faltam ${fmtTempo(restante())} para acabar o seu teste grátis. Assine para continuar sem interrupção.`), 800);
   }
+  // capítulos do vídeo (segundos)
+  const CAPITULOS = [[0, 'Início rápido'], [143, 'Cada campo dos dados'], [454, 'Resultados e tabelas']];
+  const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
   function tutorialDialog() {
     const d = dialog('Como usar o GabiãoCAD', `${videoTag(true)}
-      <ol class="feat"><li><b>Projeto</b>: dê um nome e escolha as camadas de gabião (largura e altura de cada caixa).</li><li><b>Solos</b>: informe o aterro atrás do muro e a fundação.</li><li>Veja o <b>corte</b>, a <b>vista</b> e o <b>3D</b>; os resultados ficam verdes quando passam.</li><li>Use <b>Otimizar</b> para o programa achar a seção mais econômica que passa em tudo.</li><li><b>Exportar</b> gera o memorial em PDF e os quantitativos.</li></ol>`, true);
+      <div class="row-btns" style="align-items:center"><span class="help">Ir para:</span>${CAPITULOS.map(([t, n]) => `<button class="btn" type="button" data-t="${t}">${mmss(t)} · ${n}</button>`).join('')}</div>`, true);
     const v = d.querySelector('video'); d.addEventListener('close', () => v.pause());
+    d.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { v.currentTime = +b.dataset.t; v.play().catch(() => {}); });
   }
   // último plano confirmado (para o programa instalado funcionar sem internet, só para assinantes)
   const CACHE = 'gabiao-plano';

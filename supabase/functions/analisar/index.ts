@@ -14,11 +14,12 @@ Deno.serve(async (req) => {
   if (!imgs.length || !body.prompt || body.prompt.length > 20000) return json({ erro: 'pedido', mensagem: 'Envie de 1 a 4 fotos.' }, 400);
 
   const db = admin();
-  const { data: perfil } = await db.from('profiles').select('plano, premium_ate').eq('id', user.id).single();
+  const { data: perfil } = await db.from('profiles').select('plano, premium_ate, teste_ate').eq('id', user.id).single();
   const P = infoPlano(perfil);
+  if (P.estado === 'expirado') return json({ erro: 'teste_fim', mensagem: 'Seu teste grátis terminou. Assine para continuar analisando fotos.' }, 403);
   const { data: usados, error: e1 } = await db.rpc('consumir_analise', { p_user: user.id, p_limite: P.limite });
   if (e1) return json({ erro: 'servidor' }, 500);
-  if (usados === -1) return json({ erro: 'limite', limite: P.limite, premium: P.premium, mensagem: P.premium ? 'Você chegou ao limite de uso justo deste mês.' : `O plano grátis tem ${P.limite} análises por mês.` }, 429);
+  if (usados === -1) return json({ erro: 'limite', limite: P.limite, premium: P.premium, mensagem: P.premium ? 'Você chegou ao limite de uso justo deste mês.' : `O teste grátis tem ${P.limite} análises de foto.` }, 429);
 
   try {
     const r = await fetch((Deno.env.get('ANTHROPIC_API') ?? 'https://api.anthropic.com') + '/v1/messages', {

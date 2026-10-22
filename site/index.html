@@ -94,22 +94,23 @@ footer a{color:#fff}
 .final{background:var(--night);color:#fff;text-align:center}
 .final p{color:#C9D3DA;margin:0 auto 24px;max-width:56ch}
 .final .cta{justify-content:center}
+.tut{width:100%;max-width:960px;height:auto;display:block;margin:0 auto;border-radius:12px;border:1px solid var(--line,#ccd);background:#0e1620;box-shadow:0 16px 40px rgba(0,0,0,.15)}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="wrap nav">
     <a class="logo" href="./"><img src="assets/icon.png" alt="">GabiãoCAD</a>
-    <ul><li><a href="#como">Como funciona</a></li><li><a href="#recursos">Recursos</a></li><li><a href="#planos">Planos</a></li><li><a href="#perguntas">Perguntas</a></li></ul>
-    <a class="btn btn-main" href="app/">Usar grátis</a>
+    <ul><li><a href="#como">Como funciona</a></li><li><a href="#tutorial">Vídeo</a></li><li><a href="#recursos">Recursos</a></li><li><a href="#planos">Planos</a></li><li><a href="#perguntas">Perguntas</a></li></ul>
+    <a class="btn btn-main" href="app/">Testar grátis</a>
   </div>
   <div class="wrap hero">
     <div>
       <span class="eyebrow">Muros de gabião · NBR 11682</span>
       <h1>Do barranco ao muro de gabião em <em>5 minutos</em>.</h1>
       <p>Mande uma foto do local ou digite as medidas. O GabiãoCAD sugere o muro, verifica a estabilidade com chuva, rio e ruptura global, e entrega quantitativos, viagens de caminhão e memorial em PDF.</p>
-      <div class="cta"><a class="btn btn-main" href="app/">Usar grátis no navegador</a><a class="btn btn-ghost" href="{{DOWNLOAD_URL}}">Baixar para Windows</a></div>
-      <small>Sem cartão de crédito. O plano grátis calcula o muro completo.</small>
+      <div class="cta"><a class="btn btn-main" href="app/">Testar 7 dias grátis</a><a class="btn btn-ghost" href="{{DOWNLOAD_URL}}">Baixar para Windows</a></div>
+      <small>Sem cartão de crédito. Crie sua conta e use o programa completo por 7 dias.</small>
     </div>
     <div class="shot"><img src="assets/tela-programa.webp" alt="Tela do GabiãoCAD com o corte do muro, os resultados de estabilidade e a superfície de ruptura global" width="1600" height="1000"></div>
   </div>
@@ -128,7 +129,15 @@ footer a{color:#fff}
   </div>
 </section>
 
-<section id="recursos" class="alt">
+<section id="tutorial" class="alt">
+  <div class="wrap">
+    <h2>Veja como usar em 2 minutos</h2>
+    <p class="lead">Do nome do projeto ao memorial em PDF, passo a passo.</p>
+    <video class="tut" controls preload="none" playsinline poster="assets/tutorial-capa.webp" width="1280" height="720"><source src="assets/tutorial.mp4" type="video/mp4">Seu navegador não toca vídeo. <a href="assets/tutorial.mp4">Baixe o vídeo</a>.</video>
+  </div>
+</section>
+
+<section id="recursos">
   <div class="wrap">
     <h2>Tudo o que um muro de gabião precisa</h2>
     <p class="lead">Feito para quem projeta, executa ou fiscaliza contenções.</p>
@@ -163,10 +172,10 @@ footer a{color:#fff}
 <section id="planos" class="alt">
   <div class="wrap">
     <h2>Planos</h2>
-    <p class="lead">Comece grátis. Assine quando precisar de leito de rio, relatório sem marca d'água e fotos sem limite.</p>
+    <p class="lead">Teste tudo por 7 dias, sem cartão. Depois, escolha o plano que serve para você.</p>
     <div class="plans">
-      <div class="plan"><h3>Grátis</h3><div class="price">R$ 0</div><ul><li>Cálculo completo, seco e com chuva</li><li>Estabilidade global</li><li>Corte, vista e 3D</li><li>Quantitativos na tela</li><li>PDF com marca d'água</li><li>3 análises de foto por mês</li><li>3 projetos na nuvem</li></ul><a class="btn btn-ghost" href="app/">Começar</a></div>
-      <div class="plan hot"><h3>Premium</h3><div class="price">R$ 39,90 <small>/mês</small></div><ul><li>Tudo do grátis</li><li>Muro em leito de rio</li><li>PDF sem marca d'água</li><li>Planilha de quantitativos e orçamento</li><li>Análises de foto sem limite*</li><li>Projetos ilimitados na nuvem</li></ul><a class="btn btn-main" href="app/?planos">Assinar</a><small style="color:var(--muted)">ou R$ 349 por ano</small></div>
+      <div class="plan"><h3>Teste grátis</h3><div class="price">7 dias</div><ul><li>Cálculo completo, seco, chuva e leito de rio</li><li>Estabilidade global</li><li>Corte, vista e 3D</li><li>Quantitativos na tela</li><li>PDF com marca d'água</li><li>5 análises de foto</li><li>3 projetos na nuvem</li></ul><a class="btn btn-ghost" href="app/">Começar o teste</a></div>
+      <div class="plan hot"><h3>Premium</h3><div class="price">R$ 39,90 <small>/mês</small></div><ul><li>Programa completo, sem prazo</li><li>PDF sem marca d'água</li><li>Planilha de quantitativos e orçamento</li><li>Análises de foto sem limite*</li><li>Projetos ilimitados na nuvem</li></ul><a class="btn btn-main" href="app/?planos">Assinar</a><small style="color:var(--muted)">ou R$ 349 por ano</small></div>
       <div class="plan"><h3>Estudante</h3><div class="price">R$ 9,90 <small>/mês</small></div><ul><li>Tudo do Premium</li><li>Com e-mail da faculdade (.edu.br)</li></ul><a class="btn btn-ghost" href="app/?planos">Assinar</a></div>
       <div class="plan"><h3>Institucional</h3><div class="price">R$ 990 <small>/ano</small></div><ul><li>Até 5 usuários Premium</li><li>Nota fiscal para prefeituras e empresas</li></ul><a class="btn btn-ghost" href="mailto:{{CONTATO}}">Falar conosco</a></div>
     </div>
@@ -182,7 +191,8 @@ footer a{color:#fff}
       <details><summary>Quais verificações são feitas?</summary><p>Deslizamento, tombamento, excentricidade, tensão no solo, seções internas entre camadas e estabilidade global pelo método de Bishop, com os fatores de segurança da NBR 11682. Com chuva ou leito de rio, o programa calcula todos os casos e usa o pior.</p></details>
       <details><summary>Funciona sem internet?</summary><p>O programa para Windows funciona sem internet. Só a análise de foto precisa de conexão.</p></details>
       <details><summary>Como funciona a análise de foto?</summary><p>Você envia até 4 fotos do local e a inteligência artificial estima altura, solo e situação, e sugere o muro. O programa então ajusta a solução para passar em todas as verificações. É uma estimativa visual: confirme as medidas no local.</p></details>
-      <details><summary>Meus projetos ficam guardados?</summary><p>No navegador, o projeto fica salvo no seu computador e pode ser exportado. Com uma conta, você também salva na nuvem e abre em qualquer aparelho.</p></details>
+      <details><summary>Como funciona o teste grátis?</summary><p>Você entra com sua conta Google ou com um link enviado ao seu e-mail e usa o programa completo por 7 dias, sem cartão de crédito. No fim do teste, o programa pede para escolher um plano; nada é cobrado automaticamente.</p></details>
+      <details><summary>Meus projetos ficam guardados?</summary><p>O projeto fica salvo no seu computador e pode ser exportado. Na sua conta, você também salva na nuvem e abre em qualquer aparelho. Se o teste acabar, os projetos continuam guardados e voltam quando você assinar.</p></details>
       <details><summary>Como cancelo a assinatura?</summary><p>Em Minha conta, dentro do programa, ou pelo próprio Mercado Pago. O Premium continua até o fim do período já pago.</p></details>
     </div>
   </div>
@@ -191,8 +201,8 @@ footer a{color:#fff}
 <section class="final">
   <div class="wrap">
     <h2>Calcule seu próximo muro agora</h2>
-    <p>Grátis, direto no navegador. Leva menos tempo do que montar a planilha.</p>
-    <div class="cta"><a class="btn btn-main" href="app/">Usar grátis</a><a class="btn btn-ghost" href="{{DOWNLOAD_URL}}">Baixar para Windows</a></div>
+    <p>7 dias grátis, direto no navegador. Leva menos tempo do que montar a planilha.</p>
+    <div class="cta"><a class="btn btn-main" href="app/">Testar grátis</a><a class="btn btn-ghost" href="{{DOWNLOAD_URL}}">Baixar para Windows</a></div>
   </div>
 </section>
 

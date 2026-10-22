@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import { infoPlano, emailEstudante, corpoAssinatura, lerReferencia, atualizacaoPerfil, assinaturaValida } from '../supabase/functions/_shared/logic.ts';
 
 const agora = new Date('2026-10-22T12:00:00Z');
-assert.equal(infoPlano(null).premium, false);
-assert.deepEqual([infoPlano({ plano: 'gratis', premium_ate: null }, agora).limite, infoPlano({ plano: 'gratis', premium_ate: null }, agora).modelo], [3, 'claude-haiku-5-5']);
+assert.equal(infoPlano(null).premium, false); assert.equal(infoPlano(null).estado, 'expirado');
+const tst = infoPlano({ plano: 'gratis', premium_ate: null, teste_ate: '2026-10-27T13:00:00Z' }, agora);
+assert.deepEqual([tst.estado, tst.limite, tst.modelo, tst.diasRestantes], ['teste', 5, 'claude-haiku-5-5', 6]);
+const exp = infoPlano({ plano: 'gratis', premium_ate: null, teste_ate: '2026-10-21T00:00:00Z' }, agora);
+assert.deepEqual([exp.estado, exp.limite], ['expirado', 0]);
+assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-11-30T00:00:00Z', teste_ate: '2026-10-01T00:00:00Z' }, agora).estado, 'premium', 'assinante com teste vencido');
+assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-10-01T00:00:00Z', teste_ate: '2026-10-01T00:00:00Z' }, agora).estado, 'expirado', 'assinatura e teste vencidos');
 const pAtivo = infoPlano({ plano: 'premium', premium_ate: '2026-11-30T00:00:00Z' }, agora);
 assert.equal(pAtivo.premium, true); assert.equal(pAtivo.limite, 150); assert.equal(pAtivo.modelo, 'claude-sonnet-5-5');
 assert.equal(infoPlano({ plano: 'premium', premium_ate: '2026-10-01T00:00:00Z' }, agora).premium, false, 'vencido');

@@ -15,14 +15,14 @@ Projeto e verificação de muros de gabião: estabilidade (inclusive chuva, leit
 
 O site fica no **GitHub Pages** (grátis), as contas e o limite de fotos no **Supabase** (grátis até 50 mil usuários ativos por mês) e a cobrança no **Mercado Pago**. Tudo é publicado sozinho pelo GitHub a cada alteração.
 
-### 1. GitHub Pages (site no ar, plano grátis funcionando)
+### 1. GitHub Pages (site no ar)
 1. No repositório: **Settings → Pages → Source: GitHub Actions**.
 2. Em **Settings → Secrets and variables → Actions → Variables**, crie:
    - `SITE_URL` = endereço do site (ex.: `https://SEU-USUARIO.github.io/gabiaocad` ou `https://gabiaocad.com.br`)
    - `CONTATO` = e-mail de contato
 3. Faça qualquer alteração (ou rode **Actions → Publicar site → Run workflow**). Em 2 minutos o site está no ar.
 
-Sem as contas configuradas, o programa funciona no plano grátis local (sem login, sem foto com IA).
+Sem as contas configuradas, o programa abre direto, sem login (modo de demonstração, sem foto com IA). Com o Supabase configurado, o site exige login, dá **7 dias de teste grátis** a partir do primeiro acesso e depois mostra a tela de planos. Para mudar o prazo, troque `7 days` na migração `supabase/migrations/20261023000000_teste_gratis.sql` e `TESTE_DIAS` em `supabase/functions/_shared/logic.ts`.
 
 ### 2. Supabase (contas, projetos na nuvem, limite de fotos)
 1. Crie um projeto em supabase.com (região São Paulo). Guarde a **senha do banco**.

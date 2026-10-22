@@ -1,7 +1,7 @@
 {
   "name": "gabiaocad",
   "productName": "GabiaoCAD",
-  "version": "0.2.3",
+  "version": "0.6.0",
   "description": "Projeto e verificação de muros de gabião",
   "author": "GabiaoCAD",
   "main": "main.js",

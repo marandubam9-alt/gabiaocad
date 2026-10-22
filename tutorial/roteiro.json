@@ -251,8 +251,8 @@
  },
  {
   "id": "p30",
-  "legenda": "<b>Estabilidade externa</b>: Verificação · Obtido · Exigido · situação",
-  "fala": "Na tabela Estabilidade externa, a coluna Obtido é o que o muro alcança, Exigido é o limite da norma, e a última coluna diz se está ok."
+  "legenda": "<b>Estabilidade externa</b>: Verificação · Seco · Com chuva · Exigido",
+  "fala": "Na tabela Estabilidade externa, cada linha é uma verificação. As colunas mostram o valor obtido com o solo seco e com chuva, e Exigido é o limite da norma. A marca no fim diz se está ok. Sem chuva, aparece uma só coluna, Obtido."
  },
  {
   "id": "p31",
@@ -266,8 +266,8 @@
  },
  {
   "id": "p33",
-  "legenda": "<b>Casos com água</b>: um caso por linha; o pior é o usado",
-  "fala": "Quando chuva ou rio estão ligados, aparece a tabela Casos com água, com um caso por linha e as verificações em colunas. O pior caso é o que vale nos resultados."
+  "legenda": "<b>Casos com água</b> (leito de rio): normal, cheia e rebaixamento rápido",
+  "fala": "Com o leito de rio ligado, aparece também a tabela Casos com água: rio normal, cheia e rebaixamento rápido, um por linha, com as verificações em colunas. O pior caso é o que vale nos resultados."
  },
  {
   "id": "p34",

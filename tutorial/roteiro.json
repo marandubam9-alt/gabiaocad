@@ -1,23 +1,287 @@
 [
- {"id": "s00", "legenda": "", "fala": "Olá! Neste vídeo você vai aprender a projetar um muro de gabião no Gabião Cad, em poucos minutos."},
- {"id": "s01", "legenda": "Na esquerda ficam os <b>dados do muro</b>. Na direita, os <b>resultados e desenhos</b>, que atualizam na hora.", "fala": "Do lado esquerdo ficam os dados do muro. Do lado direito, os resultados e os desenhos, que se atualizam na hora."},
- {"id": "s02", "legenda": "<span class=\"n\">1</span>Dê um <b>nome</b> ao projeto", "fala": "Primeiro, dê um nome ao projeto."},
- {"id": "s03", "legenda": "<span class=\"n\">2</span>Digite a <b>altura do muro</b> e clique em <b>Gerar</b>", "fala": "Depois, digite a altura do muro e clique em Gerar."},
- {"id": "s04", "legenda": "O programa monta as <b>camadas de caixas</b>. Você pode mudar a <b>largura e a altura</b> de cada uma.", "fala": "O programa monta as camadas de caixas automaticamente. Você pode mudar a largura e a altura de cada uma."},
- {"id": "s05", "legenda": "A camada da base pode ser <b>contraforte</b>: caixas atravessadas, entrando no aterro.", "fala": "A camada da base pode ser de contraforte, com as caixas atravessadas, entrando no aterro."},
- {"id": "s06", "legenda": "<span class=\"n\">3</span>Escolha o <b>solo do aterro</b>: a terra que fica atrás do muro", "fala": "Agora, escolha o tipo de solo do aterro, que é a terra que fica atrás do muro."},
- {"id": "s07", "legenda": "E o <b>solo da fundação</b>: o chão onde o muro vai apoiar", "fala": "E escolha o solo da fundação: o chão onde o muro vai apoiar."},
- {"id": "s08", "legenda": "<span class=\"n\">4</span>Confira as <b>verificações</b>: <b>verde</b> passou, <b>vermelho</b> não passou", "fala": "No alto da tela, confira as verificações. Verde quer dizer que passou. Vermelho, que não passou."},
- {"id": "s09", "legenda": "Aqui a <b>estabilidade global</b> não passou: o terreno em volta pode romper junto com o muro.", "fala": "Neste exemplo, a estabilidade global não passou. Isso quer dizer que o terreno em volta pode romper junto com o muro."},
- {"id": "s10", "legenda": "<span class=\"n\">5</span>Clique em <b>Ajustar para passar</b>: o programa procura a solução mais econômica com caixas inteiras", "fala": "Clique em Ajustar para passar. O programa procura sozinho a solução mais econômica, usando só caixas inteiras."},
- {"id": "s11", "legenda": "Pronto: <b>muro estável</b>. A tabela mostra o que mudou, e dá para <b>desfazer</b> se quiser.", "fala": "Pronto, o muro ficou estável. A tabela mostra o que mudou, e você pode desfazer, se quiser."},
- {"id": "s12", "legenda": "<span class=\"n\">6</span>Veja o muro em <b>corte</b>, com o empuxo, o peso e a linha de ruptura", "fala": "No corte, você vê o empuxo do solo, o peso do muro e a linha de ruptura."},
- {"id": "s13", "legenda": "Na <b>vista frontal</b> aparecem as caixas ao longo do comprimento", "fala": "Na vista frontal, aparecem as caixas ao longo de todo o comprimento."},
- {"id": "s14", "legenda": "E no <b>3D</b> você gira com o mouse para apresentar ao cliente", "fala": "E na vista em três dimensões, você gira o muro com o mouse, para apresentar ao cliente."},
- {"id": "s15", "legenda": "<span class=\"n\">7</span>Em <b>Chuva e água</b>, marque quando o aterro pode ficar <b>encharcado</b>", "fala": "Em Chuva e água, marque esta opção quando o aterro puder ficar encharcado."},
- {"id": "s16", "legenda": "O programa refaz tudo na hora com o <b>peso da água</b>. Se ficar vermelho, use <b>Ajustar para passar</b> de novo.", "fala": "O programa refaz todos os cálculos com o peso da água. Se alguma verificação ficar vermelha, use Ajustar para passar de novo."},
- {"id": "s17", "legenda": "<span class=\"n\">8</span>Os <b>quantitativos</b> saem prontos: caixas, pedra, escavação, aterro, manta e <b>viagens de caminhão</b>", "fala": "Os quantitativos saem prontos: caixas, pedra, escavação, aterro, manta geotêxtil, e até as viagens de caminhão."},
- {"id": "s18", "legenda": "<span class=\"n\">9</span>Em <b>Exportar</b> você baixa o <b>memorial em PDF</b> e a <b>planilha de quantitativos</b>", "fala": "Por fim, em Exportar, você baixa o memorial de cálculo em PDF e a planilha de quantitativos."},
- {"id": "s19", "legenda": "Dica: em <b>Analisar foto do local</b>, envie fotos do barranco e receba uma sugestão de projeto.", "fala": "Uma dica: em Analisar foto do local, envie fotos do barranco e receba uma sugestão de projeto."},
- {"id": "s20", "legenda": "", "fala": "Agora é com você. Crie sua conta e teste o Gabião Cad grátis, por três horas de uso. Bons projetos!"}
+ {
+  "id": "s00",
+  "legenda": "",
+  "fala": "Olá! Neste vídeo você vai aprender a projetar um muro de gabião no Gabião Cad, em poucos minutos."
+ },
+ {
+  "id": "s01",
+  "legenda": "Na esquerda ficam os <b>dados do muro</b>. Na direita, os <b>resultados e desenhos</b>, que atualizam na hora.",
+  "fala": "Do lado esquerdo ficam os dados do muro. Do lado direito, os resultados e os desenhos, que se atualizam na hora."
+ },
+ {
+  "id": "s02",
+  "legenda": "<span class=\"n\">1</span>Dê um <b>nome</b> ao projeto",
+  "fala": "Primeiro, dê um nome ao projeto."
+ },
+ {
+  "id": "s03",
+  "legenda": "<span class=\"n\">2</span>Digite a <b>altura do muro</b> e clique em <b>Gerar</b>",
+  "fala": "Depois, digite a altura do muro e clique em Gerar."
+ },
+ {
+  "id": "s04",
+  "legenda": "O programa monta as <b>camadas de caixas</b>. Você pode mudar a <b>largura e a altura</b> de cada uma.",
+  "fala": "O programa monta as camadas de caixas automaticamente. Você pode mudar a largura e a altura de cada uma."
+ },
+ {
+  "id": "s05",
+  "legenda": "A camada da base pode ser <b>contraforte</b>: caixas atravessadas, entrando no aterro.",
+  "fala": "A camada da base pode ser de contraforte, com as caixas atravessadas, entrando no aterro."
+ },
+ {
+  "id": "s06",
+  "legenda": "<span class=\"n\">3</span>Escolha o <b>solo do aterro</b>: a terra que fica atrás do muro",
+  "fala": "Agora, escolha o tipo de solo do aterro, que é a terra que fica atrás do muro."
+ },
+ {
+  "id": "s07",
+  "legenda": "E o <b>solo da fundação</b>: o chão onde o muro vai apoiar",
+  "fala": "E escolha o solo da fundação: o chão onde o muro vai apoiar."
+ },
+ {
+  "id": "s08",
+  "legenda": "<span class=\"n\">4</span>Confira as <b>verificações</b>: <b>verde</b> passou, <b>vermelho</b> não passou",
+  "fala": "No alto da tela, confira as verificações. Verde quer dizer que passou. Vermelho, que não passou."
+ },
+ {
+  "id": "s09",
+  "legenda": "Aqui a <b>estabilidade global</b> não passou: o terreno em volta pode romper junto com o muro.",
+  "fala": "Neste exemplo, a estabilidade global não passou. Isso quer dizer que o terreno em volta pode romper junto com o muro."
+ },
+ {
+  "id": "s10",
+  "legenda": "<span class=\"n\">5</span>Clique em <b>Ajustar para passar</b>: o programa procura a solução mais econômica com caixas inteiras",
+  "fala": "Clique em Ajustar para passar. O programa procura sozinho a solução mais econômica, usando só caixas inteiras."
+ },
+ {
+  "id": "s11",
+  "legenda": "Pronto: <b>muro estável</b>. A tabela mostra o que mudou, e dá para <b>desfazer</b> se quiser.",
+  "fala": "Pronto, o muro ficou estável. A tabela mostra o que mudou, e você pode desfazer, se quiser."
+ },
+ {
+  "id": "s12",
+  "legenda": "<span class=\"n\">6</span>Veja o muro em <b>corte</b>, com o empuxo, o peso e a linha de ruptura",
+  "fala": "No corte, você vê o empuxo do solo, o peso do muro e a linha de ruptura."
+ },
+ {
+  "id": "s13",
+  "legenda": "Na <b>vista frontal</b> aparecem as caixas ao longo do comprimento",
+  "fala": "Na vista frontal, aparecem as caixas ao longo de todo o comprimento."
+ },
+ {
+  "id": "s14",
+  "legenda": "E no <b>3D</b> você gira com o mouse para apresentar ao cliente",
+  "fala": "E na vista em três dimensões, você gira o muro com o mouse, para apresentar ao cliente."
+ },
+ {
+  "id": "s15",
+  "legenda": "<span class=\"n\">7</span>Em <b>Chuva e água</b>, marque quando o aterro pode ficar <b>encharcado</b>",
+  "fala": "Em Chuva e água, marque esta opção quando o aterro puder ficar encharcado."
+ },
+ {
+  "id": "s16",
+  "legenda": "O programa refaz tudo na hora com o <b>peso da água</b>. Se ficar vermelho, use <b>Ajustar para passar</b> de novo.",
+  "fala": "O programa refaz todos os cálculos com o peso da água. Se alguma verificação ficar vermelha, use Ajustar para passar de novo."
+ },
+ {
+  "id": "s17",
+  "legenda": "<span class=\"n\">8</span>Os <b>quantitativos</b> saem prontos: caixas, pedra, escavação, aterro, manta e <b>viagens de caminhão</b>",
+  "fala": "Os quantitativos saem prontos: caixas, pedra, escavação, aterro, manta geotêxtil, e até as viagens de caminhão."
+ },
+ {
+  "id": "s18",
+  "legenda": "<span class=\"n\">9</span>Em <b>Exportar</b> você baixa o <b>memorial em PDF</b> e a <b>planilha de quantitativos</b>",
+  "fala": "Por fim, em Exportar, você baixa o memorial de cálculo em PDF e a planilha de quantitativos."
+ },
+ {
+  "id": "s19",
+  "legenda": "Dica: em <b>Analisar foto do local</b>, envie fotos do barranco e receba uma sugestão de projeto.",
+  "fala": "Uma dica: em Analisar foto do local, envie fotos do barranco e receba uma sugestão de projeto."
+ },
+ {
+  "id": "p00",
+  "legenda": "<b>Parte 2</b>: cada campo e cada tabela do programa",
+  "fala": "Agora vamos ver, um por um, todos os campos e tabelas do programa, para você entender o que cada número significa."
+ },
+ {
+  "id": "p01",
+  "legenda": "<b>Unidades</b>: toneladas força (tf) ou quilonewtons (kN)",
+  "fala": "Em Unidades, escolha se quer ver os resultados em toneladas força ou em quilonewtons. O cálculo é o mesmo, só muda a forma de mostrar."
+ },
+ {
+  "id": "p02",
+  "legenda": "<b>Comprimento do muro</b>: extensão total, em metros",
+  "fala": "Comprimento do muro é a extensão total ao longo do terreno. Ele multiplica os quantitativos, mas não muda a estabilidade, que é calculada por metro de muro."
+ },
+ {
+  "id": "p03",
+  "legenda": "<b>Embutimento</b>: quanto a base fica enterrada",
+  "fala": "Embutimento é quanto a base do muro fica enterrada abaixo do terreno da frente. Um embutimento maior ajuda contra o deslizamento e contra a ruptura global."
+ },
+ {
+  "id": "p04",
+  "legenda": "<b>Inclinação do muro</b>: o muro deitado contra o aterro",
+  "fala": "Inclinação do muro é o quanto ele deita para trás, contra o aterro. Entre seis e dez graus, o muro fica mais estável do que um muro em pé."
+ },
+ {
+  "id": "p05",
+  "legenda": "<b>Comprimento da caixa</b>: 1,5 · 2 · 3 ou 4 m",
+  "fala": "Comprimento da caixa é o tamanho das caixas de gabião compradas: um metro e meio, dois, três ou quatro metros."
+ },
+ {
+  "id": "p06",
+  "legenda": "<b>Degraus</b>: na face (frente) ou no tardoz (atrás)",
+  "fala": "Em Degraus das camadas, escolha se os degraus ficam na face da frente, ou no tardoz, que é o lado de trás, encostado na terra."
+ },
+ {
+  "id": "p07",
+  "legenda": "<b>Desencontrar juntas</b>: emendas alternadas entre camadas",
+  "fala": "Desencontrar juntas faz as emendas entre as caixas não ficarem alinhadas de uma camada para a outra, como numa parede de tijolos."
+ },
+ {
+  "id": "p08",
+  "legenda": "<b>Camadas</b>: Cam. · Larg. · Alt. · Caixas (em fila ou contraforte)",
+  "fala": "Na tabela de camadas, cada linha é uma fiada de caixas. Cam é o número da camada, de baixo para cima. Larg é a largura, de frente para trás. Alt é a altura da caixa. E Caixas diz se elas ficam em fila ou como contraforte. O xis apaga a camada."
+ },
+ {
+  "id": "p09",
+  "legenda": "<b>Altura desejada + Gerar</b>: muro inicial com base ≈ 0,6·H",
+  "fala": "Altura desejada e Gerar montam um muro inicial, com a base em torno de sessenta por cento da altura. Depois, você ajusta camada por camada."
+ },
+ {
+  "id": "p10",
+  "legenda": "<b>Solo do aterro</b>: os botões preenchem valores típicos",
+  "fala": "Em Solo do aterro, os botões de tipo de solo preenchem valores típicos. Você pode trocar qualquer número depois."
+ },
+ {
+  "id": "p11",
+  "legenda": "<b>Peso específico γ</b>: peso de 1 m³ do solo (1,7 a 2,0 t/m³)",
+  "fala": "Peso específico, gama, é o peso de um metro cúbico do solo. Normalmente fica entre um vírgula sete e duas toneladas por metro cúbico."
+ },
+ {
+  "id": "p12",
+  "legenda": "<b>Ângulo de atrito φ</b>: a “firmeza” do solo",
+  "fala": "Ângulo de atrito, fi, é a firmeza do solo. Argilas ficam entre vinte e dois e vinte e oito graus, e areias entre trinta e trinta e seis. Quanto menor o ângulo, maior o empurrão no muro."
+ },
+ {
+  "id": "p13",
+  "legenda": "<b>Atrito solo-muro δ</b>: terra contra o gabião (≈ 0,9·φ com manta)",
+  "fala": "Atrito solo muro, delta, é o atrito entre a terra e o fundo do gabião. Com geotêxtil, use cerca de noventa por cento do ângulo fi."
+ },
+ {
+  "id": "p14",
+  "legenda": "<b>Inclinação do terreno β</b>: 0° = plano; menor que φ",
+  "fala": "Inclinação do terreno, beta, é a inclinação da terra acima do muro. Zero é plano, e ela precisa ser menor que o ângulo de atrito."
+ },
+ {
+  "id": "p15",
+  "legenda": "<b>Sobrecarga q</b>: calçada, rua com carros, caminhões",
+  "fala": "Sobrecarga, q, é o peso das coisas em cima do aterro: uma calçada, uma rua com carros, ou caminhões."
+ },
+ {
+  "id": "p16",
+  "legenda": "<b>Chuva e água</b>: drenagem boa, ruim ou entupida",
+  "fala": "Em Chuva e água, ligue a verificação com o solo molhado. Os botões de drenagem dizem até onde a água sobe: drenagem boa, um terço da altura; ruim, dois terços; entupida, até o topo."
+ },
+ {
+  "id": "p17",
+  "legenda": "<b>Solo encharcado</b> e <b>altura da água</b> atrás do muro",
+  "fala": "Peso do solo encharcado é o peso da terra saturada, que é maior. A altura da água atrás do muro é medida a partir da base."
+ },
+ {
+  "id": "p18",
+  "legenda": "<b>Leito de rio</b>: nível normal, nível na cheia e velocidade da água",
+  "fala": "Leito de rio é para muros na margem ou dentro de rios e córregos. Informe o nível normal, o nível na maior cheia conhecida e a velocidade da água."
+ },
+ {
+  "id": "p19",
+  "legenda": "<b>Erosão no pé</b> e <b>colchão de gabião</b> (largura ≥ 1,5 × erosão)",
+  "fala": "Erosão prevista é quanto o rio pode cavar na frente do muro. O colchão de gabião no pé protege a base, e a largura dele deve ser pelo menos uma vez e meia a erosão."
+ },
+ {
+  "id": "p20",
+  "legenda": "<b>Fundação</b>: atrito na base φ e adesão c",
+  "fala": "Em Fundação, o atrito na base segura o muro contra o deslizamento. A adesão é a coesão do solo. Por segurança, deixe zero."
+ },
+ {
+  "id": "p21",
+  "legenda": "<b>Tensão admissível</b>: quanto o solo aguenta (≈ 2 × N do SPT)",
+  "fala": "Tensão admissível é quanto cada metro quadrado do solo aguenta sem afundar. Com sondagem, uma regra prática é duas vezes o N do SPT, em toneladas por metro quadrado."
+ },
+ {
+  "id": "p22",
+  "legenda": "<b>Gabião</b>: peso da rocha e porosidade (vazios entre as pedras)",
+  "fala": "Em Gabião, informe o peso da rocha e a porosidade, que são os vazios entre as pedras: trinta por cento com a pedra bem arrumada, e quarenta jogada. O programa calcula o peso do gabião cheio."
+ },
+ {
+  "id": "p23",
+  "legenda": "<b>Escavação</b>: Corte (escavando o barranco) ou Aterro",
+  "fala": "Em Escavação e aterro, escolha Corte, quando o muro é feito escavando o barranco, ou Aterro, quando a terra é colocada atrás do muro depois."
+ },
+ {
+  "id": "p24",
+  "legenda": "<b>Folga de trabalho</b> e <b>talude da vala</b>",
+  "fala": "Folga de trabalho é o espaço livre para montar as caixas. Talude da vala é a inclinação da escavação: meio para solo firme, e de um a um e meio para solo arenoso."
+ },
+ {
+  "id": "p25",
+  "legenda": "<b>Empolamento</b> e <b>capacidade do caminhão</b> (viagens)",
+  "fala": "Empolamento é o aumento de volume da terra solta, em geral um vírgula vinte e cinco. Capacidade do caminhão é o volume por viagem, usado para contar as viagens."
+ },
+ {
+  "id": "p26",
+  "legenda": "<b>Aterrar o vazio</b>: distância e inclinação do barranco",
+  "fala": "Aterrar o vazio atrás do muro calcula a terra para preencher o espaço até o barranco. Informe a distância e a inclinação do barranco."
+ },
+ {
+  "id": "p27",
+  "legenda": "<b>Geotêxtil</b>: sobreposição nas emendas e manta na base",
+  "fala": "Em Geotêxtil, a sobreposição é a perda nas emendas, normalmente de dez a quinze por cento. Marque Colocar na base quando a fundação for de argila ou silte."
+ },
+ {
+  "id": "p28",
+  "legenda": "<b>Critérios</b>: FS mínimos da NBR 11682 e estabilidade global",
+  "fala": "Em Critérios ficam os fatores de segurança mínimos da norma: um e meio no deslizamento, dois no tombamento, e um e meio na estabilidade global, que pode ser ligada ou desligada."
+ },
+ {
+  "id": "p29",
+  "legenda": "<b>Resultados</b>: valor obtido em cima, mínimo exigido embaixo",
+  "fala": "Agora, os resultados. Os cartões no alto mostram o valor obtido em cada verificação, com o limite exigido logo abaixo. Verde passou, vermelho não."
+ },
+ {
+  "id": "p30",
+  "legenda": "<b>Estabilidade externa</b>: Verificação · Obtido · Exigido · situação",
+  "fala": "Na tabela Estabilidade externa, a coluna Obtido é o que o muro alcança, Exigido é o limite da norma, e a última coluna diz se está ok."
+ },
+ {
+  "id": "p31",
+  "legenda": "<b>Forças</b>: empuxo, peso, momentos e círculo crítico",
+  "fala": "Embaixo da tabela ficam as forças do cálculo: o empuxo, o peso do muro, os momentos e o tamanho do círculo de ruptura global."
+ },
+ {
+  "id": "p32",
+  "legenda": "<b>Quantitativos</b>: Item · Quant. · Un.",
+  "fala": "Em Quantitativos, cada linha tem o item, a quantidade e a unidade: caixas por tipo, volume e peso de pedra, geotêxtil, escavação, reaterro e viagens de caminhão."
+ },
+ {
+  "id": "p33",
+  "legenda": "<b>Casos com água</b>: um caso por linha; o pior é o usado",
+  "fala": "Quando chuva ou rio estão ligados, aparece a tabela Casos com água, com um caso por linha e as verificações em colunas. O pior caso é o que vale nos resultados."
+ },
+ {
+  "id": "p34",
+  "legenda": "<b>Verificação interna</b>: Seção · Altura acima · Base · FS · Tensão · Resistência",
+  "fala": "Em Verificação interna, cada linha é a junta entre duas camadas: a altura de muro acima dela, a largura da base, os fatores de deslizamento e tombamento, a tensão máxima e a resistência do gabião."
+ },
+ {
+  "id": "p35",
+  "legenda": "<b>Premissas</b>: o método de cálculo usado",
+  "fala": "Por último, as Premissas do cálculo explicam o método usado. Lembre: o programa faz o pré-dimensionamento, e a obra precisa de um engenheiro responsável e de ART."
+ },
+ {
+  "id": "s20",
+  "legenda": "",
+  "fala": "Agora é com você. Crie sua conta e teste o Gabião Cad grátis, por três horas de uso. Bons projetos!"
+ }
 ]

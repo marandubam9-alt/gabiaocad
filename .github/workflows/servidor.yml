@@ -44,7 +44,8 @@ jobs:
           cat saida.txt
           if [ $st -ne 0 ]; then
             # mostra o erro no resumo da execução (a senha nunca aparece: o GitHub esconde os segredos)
-            echo "::error title=Banco de dados::$(tail -c 1500 saida.txt | tr '\n' ' ')"
+            pw="$SUPABASE_DB_PASSWORD"; esp=$([ "$pw" != "$(echo "$pw" | xargs)" ] && echo ' (tem espaço no começo ou no fim!)')
+            echo "::error title=Banco de dados::$(tail -c 1500 saida.txt | tr '\n' ' ') | A senha salva no GitHub tem ${#pw} caracteres$esp"
             exit $st
           fi
       - name: Chaves secretas das funções

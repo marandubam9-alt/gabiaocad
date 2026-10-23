@@ -50,14 +50,29 @@ def build_site():
     out = os.path.join(ROOT, 'dist', 'site'); shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(os.path.join(ROOT, 'site'), out)
     repo = os.environ.get('GITHUB_REPOSITORY', '')
-    subs = {'{{DOWNLOAD_URL}}': os.environ.get('DOWNLOAD_URL') or (f'https://github.com/{repo}/releases/latest/download/GabiaoCAD-Setup.exe' if repo else '#download'),
-            '{{CONTATO}}': os.environ.get('CONTATO', 'contato@gabiaocad.com.br'), '{{EMPRESA}}': os.environ.get('EMPRESA', '[NOME DA EMPRESA]'),
-            '{{CNPJ}}': os.environ.get('CNPJ', '[CNPJ]'), '{{ENCARREGADO}}': os.environ.get('ENCARREGADO', '[NOME E E-MAIL]'), '{{DATA}}': os.environ.get('DATA_TERMOS', '22/10/2026')}
-    for f in os.listdir(out):
-        if f.endswith('.html'):
-            p = os.path.join(out, f); t = open(p, encoding='utf-8').read()
-            for k, v in subs.items(): t = t.replace(k, v)
-            open(p, 'w', encoding='utf-8').write(t)
+    env = lambda k, d='': (os.environ.get(k) or '').strip() or d
+    site_url = env('SITE_URL') or (f'https://{repo.split("/")[0]}.github.io/{repo.split("/")[1]}/' if '/' in repo else '')
+    if site_url and not site_url.endswith('/'): site_url += '/'
+    zap = re.sub(r'\D', '', env('WHATSAPP'))
+    if zap and not zap.startswith('55'): zap = '55' + zap
+    subs = {'{{DOWNLOAD_URL}}': env('DOWNLOAD_URL') or (f'https://github.com/{repo}/releases/latest/download/GabiaoCAD-Setup.exe' if repo else '#download'),
+            '{{CONTATO}}': env('CONTATO', 'contato@gabiaocad.com.br'), '{{EMPRESA}}': env('EMPRESA'), '{{CNPJ}}': env('CNPJ'),
+            '{{ENCARREGADO}}': env('ENCARREGADO', '[NOME E E-MAIL]'), '{{DATA}}': env('DATA_TERMOS', '22/10/2026'),
+            '{{SITE_URL}}': site_url, '{{WHATSAPP}}': zap, '{{INSTAGRAM}}': env('INSTAGRAM'), '{{YOUTUBE}}': env('YOUTUBE')}
+    def fill(t):
+        # <!--IF:NOME-->...<!--/IF:NOME--> some quando a variável estiver vazia
+        prev = None
+        while prev != t:
+            prev = t
+            t = re.sub(r'<!--IF:(\w+)-->(.*?)<!--/IF:\1-->', lambda m: m.group(2) if subs.get('{{%s}}' % m.group(1)) else '', t, flags=re.S)
+        for k, v in subs.items(): t = t.replace(k, v)
+        return t
+    for root, _, files in os.walk(out):
+        for f in files:
+            if f.endswith(('.html', '.xml', '.txt')):
+                p = os.path.join(root, f); t = open(p, encoding='utf-8').read()
+                open(p, 'w', encoding='utf-8').write(fill(t))
+    shutil.copy(os.path.join(SRC, 'calc.js'), os.path.join(out, 'assets', 'calc.js'))   # usado pela calculadora rápida
     app = os.path.join(out, 'app'); os.makedirs(app)
     vendor_copy(os.path.join(app, 'vendor'), VENDOR + SUPA); fonts(os.path.join(app, 'fonts'))
     supa, cfg, js = config_js()

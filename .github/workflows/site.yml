@@ -27,6 +27,9 @@ jobs:
           EMPRESA: ${{ vars.EMPRESA }}
           CNPJ: ${{ vars.CNPJ }}
           ENCARREGADO: ${{ vars.ENCARREGADO }}
+          WHATSAPP: ${{ vars.WHATSAPP }}
+          INSTAGRAM: ${{ vars.INSTAGRAM }}
+          YOUTUBE: ${{ vars.YOUTUBE }}
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist/site }
   deploy:

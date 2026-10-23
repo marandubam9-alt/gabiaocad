@@ -7,7 +7,15 @@
 <meta name="description" content="Programa para projetar e verificar muros de gabião: estabilidade (inclusive chuva, leito de rio e global), quantitativos, viagens de caminhão, memorial em PDF e sugestão a partir de foto do local.">
 <meta property="og:title" content="GabiãoCAD · do barranco ao muro de gabião em 5 minutos">
 <meta property="og:description" content="Estabilidade, quantitativos e memorial de cálculo de muros de gabião, no navegador ou no Windows.">
-<meta property="og:image" content="assets/tela-programa.webp">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="GabiãoCAD">
+<!--IF:SITE_URL--><meta property="og:url" content="{{SITE_URL}}">
+<meta property="og:image" content="{{SITE_URL}}assets/compartilhar.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GabiãoCAD: do barranco ao muro de gabião em 5 minutos">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="{{SITE_URL}}"><!--/IF:SITE_URL-->
 <link rel="icon" href="assets/icon.png">
 <link rel="stylesheet" href="app/fonts/fonts.css">
 <style>
@@ -95,13 +103,44 @@ footer a{color:#fff}
 .final p{color:#C9D3DA;margin:0 auto 24px;max-width:56ch}
 .final .cta{justify-content:center}
 .tut{width:100%;max-width:960px;height:auto;display:block;margin:0 auto;border-radius:12px;border:1px solid var(--line,#ccd);background:#0e1620;box-shadow:0 16px 40px rgba(0,0,0,.15)}
+/* WhatsApp */
+.zap{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:max(18px,env(safe-area-inset-bottom,0px));z-index:20;display:flex;align-items:center;gap:8px;background:#1F8F4E;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 16px;border-radius:99px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.zap:hover{background:#18763f}.zap svg{width:22px;height:22px;flex:none}
+.zap:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+@media (max-width:560px){.zap span{display:none}.zap{padding:13px}}
+.social{display:flex;gap:14px}
+/* calculadora rápida */
+.qc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:28px;align-items:start}
+@media (max-width:900px){.qc{grid-template-columns:1fr}}
+.qform{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}
+.qform label{display:grid;gap:5px;font-weight:600;font-size:14.5px}
+.qform select{font:inherit;font-weight:400;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%}
+.qform select:focus-visible{outline:3px solid var(--accent-2);outline-offset:1px}
+.qform .btn{border:0;cursor:pointer;font:inherit;font-weight:600}
+.qout{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;min-height:100%}
+.qout .ph{color:var(--muted);margin:0}
+.qbig{display:flex;flex-wrap:wrap;gap:10px 26px;margin:4px 0 14px}
+.qbig div{display:grid}.qbig b{font-family:var(--f-display);font-size:38px;line-height:1}.qbig span{color:var(--muted);font-size:13.5px}
+.qsvg{width:100%;height:auto;max-height:260px;display:block;margin:6px 0 12px}
+.qfs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:0;list-style:none}
+.qfs li{background:var(--soft);border-radius:99px;padding:4px 12px;font-size:14px}
+.qwarn{background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:14.5px;margin:0 0 12px}
+.qout small{display:block;color:var(--muted);font-size:13px;margin-top:12px}
+/* confiança e comparação */
+.trust{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:900px){.trust{grid-template-columns:1fr}}
+.cmp{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15px}
+.cmp th,.cmp td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.cmp thead th{background:var(--night);color:#fff;font-weight:600}
+.cmp td:last-child{color:var(--ok);font-weight:600}
+.cmp tr:last-child td{border-bottom:0}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="wrap nav">
     <a class="logo" href="./"><img src="assets/icon.png" alt="">GabiãoCAD</a>
-    <ul><li><a href="#como">Como funciona</a></li><li><a href="#tutorial">Vídeo</a></li><li><a href="#recursos">Recursos</a></li><li><a href="#planos">Planos</a></li><li><a href="#perguntas">Perguntas</a></li></ul>
+    <ul><li><a href="#calcular">Calcular</a></li><li><a href="#como">Como funciona</a></li><li><a href="#tutorial">Vídeo</a></li><li><a href="#recursos">Recursos</a></li><li><a href="#planos">Planos</a></li><li><a href="#perguntas">Perguntas</a></li></ul>
     <a class="btn btn-main" href="app/">Testar grátis</a>
   </div>
   <div class="wrap hero">
@@ -117,7 +156,30 @@ footer a{color:#fff}
 </header>
 <div class="strip"><div class="wrap"><span>Engenheiros civis</span><span>Empreiteiros e construtoras</span><span>Prefeituras e defesa civil</span><span>Estudantes de engenharia</span></div></div>
 
-<section id="como">
+<section id="calcular">
+  <div class="wrap">
+    <h2>Qual a base do seu muro? Descubra agora</h2>
+    <p class="lead">Escolha a altura e o tipo de solo. O GabiãoCAD procura o muro mais econômico, só com caixas inteiras, que passa em todas as verificações. Sem cadastro.</p>
+    <div class="qc">
+      <form class="qform" id="qform">
+        <label>Altura que o muro segura
+          <select id="qH"><option value="1">1,0 m</option><option value="1.5">1,5 m</option><option value="2">2,0 m</option><option value="2.5">2,5 m</option><option value="3" selected>3,0 m</option><option value="3.5">3,5 m</option><option value="4">4,0 m</option><option value="5">5,0 m</option><option value="6">6,0 m</option></select></label>
+        <label>Solo atrás do muro (aterro)
+          <select id="qSolo"><option value="1.90|35">Areia compacta</option><option value="1.80|32">Areia média</option><option value="1.85|30" selected>Solo arenoso compactado</option><option value="1.75|27">Silte</option><option value="1.80|25">Argila compactada</option><option value="2.00|35">Saibro / pedregulho</option></select></label>
+        <label>Solo embaixo do muro (fundação)
+          <select id="qFund"><option value="20|5">Argila mole</option><option value="25|15">Argila média a rija</option><option value="30|25" selected>Areia média</option><option value="33|35">Areia compacta / saibro</option><option value="35|60">Rocha alterada</option></select></label>
+        <label>Água atrás do muro
+          <select id="qAgua"><option value="0" selected>Seco / drenagem eficiente</option><option value="0.3333">Chuva forte, drenagem boa (1/3 da altura)</option><option value="0.6667">Drenagem ruim (2/3 da altura)</option></select></label>
+        <label>Carga em cima do aterro
+          <select id="qQ"><option value="0">Nenhuma</option><option value="1" selected>Pessoas, carros leves (1 tf/m²)</option><option value="2">Caminhões (2 tf/m²)</option></select></label>
+        <button class="btn btn-main" type="submit" id="qGo">Calcular o muro</button>
+      </form>
+      <div class="qout" id="qout" aria-live="polite"><p class="ph">O resultado aparece aqui: largura de cada camada, desenho do corte, volume de pedra e fatores de segurança.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="como" class="alt">
   <div class="wrap">
     <h2>Como funciona</h2>
     <p class="lead">Três passos, do local da obra ao orçamento.</p>
@@ -129,7 +191,7 @@ footer a{color:#fff}
   </div>
 </section>
 
-<section id="tutorial" class="alt">
+<section id="tutorial">
   <div class="wrap">
     <h2>Veja como usar o GabiãoCAD</h2>
     <p class="lead">Do nome do projeto ao memorial em PDF, passo a passo, com narração. Depois, cada campo e cada tabela explicados: <a href="#" data-t="0">início rápido</a> · <a href="#" data-t="143">campos</a> · <a href="#" data-t="454">resultados</a>.</p>
@@ -137,7 +199,7 @@ footer a{color:#fff}
   </div>
 </section>
 
-<section id="recursos">
+<section id="recursos" class="alt">
   <div class="wrap">
     <h2>Tudo o que um muro de gabião precisa</h2>
     <p class="lead">Feito para quem projeta, executa ou fiscaliza contenções.</p>
@@ -165,11 +227,38 @@ footer a{color:#fff}
         <li>Premissas de cálculo e linhas para o responsável técnico e a ART</li>
         <li>Planilha Excel com preço unitário e total calculado</li>
       </ul>
+      <p style="margin-top:22px"><a class="btn btn-main" href="assets/memorial-exemplo.pdf" download>Baixar um memorial de exemplo (PDF)</a></p>
     </div>
   </div>
 </section>
 
-<section id="planos" class="alt">
+<section id="confianca" class="alt">
+  <div class="wrap">
+    <h2>Um cálculo que você pode conferir</h2>
+    <p class="lead">Você assina a ART, então precisa saber de onde sai cada número. Nada fica escondido.</p>
+    <div class="trust">
+      <ul class="checks">
+        <li>Empuxo pelo método de Coulomb, com sobrecarga, talude e água, e a resistência do gabião pelas fórmulas consagradas da Maccaferri</li>
+        <li>Estabilidade global pelo método de Bishop simplificado, com busca automática do círculo crítico</li>
+        <li>Fatores de segurança da NBR 11682, e você pode deixar mais rigorosos</li>
+        <li>Resultados conferidos com cálculo feito à mão: empuxo, peso, tombamento, deslizamento, excentricidade, tensão no solo e água</li>
+        <li>O memorial mostra cada força, braço e momento, para revisar linha a linha</li>
+      </ul>
+      <table class="cmp">
+        <thead><tr><th>Tarefa</th><th>Do jeito comum</th><th>No GabiãoCAD</th></tr></thead>
+        <tbody>
+          <tr><td>Achar a largura das camadas</td><td>Tentativa e erro na planilha</td><td>Ajuste automático</td></tr>
+          <tr><td>Chuva, cheia e rebaixamento</td><td>Um cálculo para cada caso</td><td>Todos de uma vez, usa o pior</td></tr>
+          <tr><td>Desenho do corte</td><td>Desenhar no CAD</td><td>Sai pronto, com cotas</td></tr>
+          <tr><td>Quantitativos</td><td>Contar caixa por caixa</td><td>Caixas, pedra, geotêxtil, escavação</td></tr>
+          <tr><td>Memorial</td><td>Montar no editor de texto</td><td>PDF em um clique</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="planos">
   <div class="wrap">
     <h2>Planos</h2>
     <p class="lead">Teste tudo por 3 horas de uso, sem cartão. Depois, escolha o plano que serve para você.</p>
@@ -183,7 +272,7 @@ footer a{color:#fff}
   </div>
 </section>
 
-<section id="perguntas">
+<section id="perguntas" class="alt">
   <div class="wrap">
     <h2>Perguntas frequentes</h2>
     <div class="faq">
@@ -209,10 +298,81 @@ footer a{color:#fff}
 <footer>
   <div class="wrap">
     <span>© <span id="ano">2026</span> GabiãoCAD · Ferramenta de apoio. O projeto executivo exige engenheiro responsável e ART.</span>
-    <span><a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Privacidade</a> · <a href="mailto:{{CONTATO}}">{{CONTATO}}</a></span>
+    <span><a href="como-calcular-muro-de-gabiao.html">Como calcular muro de gabião</a> · <a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Privacidade</a> · <a href="mailto:{{CONTATO}}">{{CONTATO}}</a><!--IF:WHATSAPP--> · <a href="https://wa.me/{{WHATSAPP}}" target="_blank" rel="noopener">WhatsApp</a><!--/IF:WHATSAPP--></span>
+    <span class="social"><!--IF:INSTAGRAM--><a href="{{INSTAGRAM}}" target="_blank" rel="noopener">Instagram</a><!--/IF:INSTAGRAM--><!--IF:YOUTUBE--><a href="{{YOUTUBE}}" target="_blank" rel="noopener">YouTube</a><!--/IF:YOUTUBE--></span>
   </div>
 </footer>
+<!--IF:WHATSAPP--><a class="zap" href="https://wa.me/{{WHATSAPP}}?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20Gabi%C3%A3oCAD." target="_blank" rel="noopener" aria-label="Tirar dúvidas pelo WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.5-.3z"/></svg><span>Dúvidas? WhatsApp</span></a><!--/IF:WHATSAPP-->
 <script>document.getElementById('ano').textContent = new Date().getFullYear();</script>
 <script>document.querySelectorAll('[data-t]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); const v = document.querySelector('video.tut'); v.currentTime = +a.dataset.t; v.play().catch(() => {}); }));</script>
+<script src="assets/calc.js"></script>
+<script>
+/* Calculadora rápida: usa o mesmo núcleo de cálculo do programa */
+(function () {
+  const form = document.getElementById('qform'), out = document.getElementById('qout'), go = document.getElementById('qGo');
+  if (!form || typeof optimizeDesign !== 'function') { if (form) form.closest('section').hidden = true; return; }
+  const n = (v, d) => v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fs = v => (Number.isFinite(v) ? n(v, 2) : '∞');
+  const $ = id => document.getElementById(id), qH = $('qH'), qSolo = $('qSolo'), qFund = $('qFund'), qAgua = $('qAgua'), qQ = $('qQ');
+  function projeto() {
+    const H = +qH.value, [g, p] = qSolo.value.split('|').map(Number), [fp, sa] = qFund.value.split('|').map(Number);
+    const hw = +qAgua.value, q = +qQ.value, hs = [];
+    let r = H; while (r >= 1 - 1e-9) { hs.push(1); r -= 1; } if (r >= 0.5 - 1e-9) hs.push(0.5);
+    return { L: 10, boxLen: 2, boxW: 1, stagger: false, faceMode: 'externa', batter: 6, D: 0.5,
+      layers: hs.map(h => ({ b: 1, h, cf: false })),
+      soil: { gamma: g * 9.81, phi: p, delta: Math.round(0.9 * p), beta: 0, q: q * 9.81 },
+      found: { phi: fp, c: 0, sadm: sa * 9.81 }, gab: { gs: 25.997, n: 0.30 },
+      exc: { scenario: 'aterro', folga: 0.5, m: 1, fill: { on: false } }, geo: { base: false, overlap: 10 },
+      fs: { desl: 1.5, tomb: 2.0, glob: 1.5, globOn: true },
+      water: { on: hw > 0, gsat: 19.62, hw: +(H * hw).toFixed(2) },
+      river: { on: false, hn: 0.8, hc: 2.5, v: 3.5, ds: 1, apron: true, lc: 3, esp: 0.23 } };
+  }
+  function desenho(s) {
+    // corte simplificado: camadas alinhadas na face, degraus no tardoz, girado pela inclinação
+    const a = s.batter * Math.PI / 180, R = rects(s), Ht = R[R.length - 1].y1, B = s.layers[0].b;
+    const rot = (x, y) => [x * Math.cos(a) + y * Math.sin(a), -x * Math.sin(a) + y * Math.cos(a)];
+    const pts = R.flatMap(r => [rot(r.x0, r.y0), rot(r.x1, r.y1)]);
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs) - 0.6, x1 = Math.max(...xs) + 1.6, y0 = Math.min(...ys) - 0.6, y1 = Math.max(...ys) + 0.5;
+    const W = 360, k = Math.min(W / (x1 - x0), 240 / (y1 - y0)), Hs = (y1 - y0) * k;
+    const P = (x, y) => `${((x - x0) * k).toFixed(1)},${((y1 - y) * k).toFixed(1)}`;
+    const boxes = R.map(r => `<polygon points="${[[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]].map(c => P(...rot(...c))).join(' ')}" fill="#BCC4C8" stroke="#16212B" stroke-width="1.2"/>`).join('');
+    const top = rot(R[R.length - 1].x1, Ht), heel = rot(R[0].x1, 0);
+    const solo = `<polygon points="${P(heel[0], heel[1])} ${P(x1, heel[1])} ${P(x1, top[1])} ${P(top[0], top[1])} ${R.slice().reverse().flatMap(r => [rot(r.x1, r.y1), rot(r.x1, r.y0)]).map(c => P(...c)).join(' ')}" fill="#EFE5D4"/>`;
+    const yT = ((y1 - s.D) * k).toFixed(1), faceX = Math.min(...R.filter(r => r.y0 <= s.D + 1e-9).map(r => rot(r.x0, s.D)[0]));
+    const terreno = `<rect x="0" y="${yT}" width="${((faceX - x0) * k).toFixed(1)}" height="${(Hs - yT).toFixed(1)}" fill="#EFE5D4"/><line x1="0" y1="${yT}" x2="${((faceX - x0) * k).toFixed(1)}" y2="${yT}" stroke="#B39467" stroke-width="2"/>`;
+    const cota = `<text x="${((rot(R[0].x0, 0)[0] - x0) * k + (B * k) / 2).toFixed(1)}" y="${(Hs - 4).toFixed(1)}" font-size="13" text-anchor="middle" fill="#16212B">base ${n(B, 0)} m</text>`;
+    return `<svg class="qsvg" viewBox="0 0 ${W} ${Hs.toFixed(0)}" role="img" aria-label="Corte do muro calculado">${solo}${terreno}${boxes}${cota}</svg>`;
+  }
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    go.disabled = true; go.textContent = 'Calculando…';
+    out.innerHTML = '<p class="ph">Testando larguras, inclinação e embutimento…</p>';
+    try {
+      const r = await optimizeDesign(projeto());
+      if (r.ok) {
+        const s = r.s, R = fullCalc(s), vol = s.layers.reduce((a, l) => a + l.b * l.h, 0);
+        const pior = R.ext, glob = R.glob;
+        out.innerHTML = `<div class="qbig"><div><b>${n(s.layers[0].b, 0)} m</b><span>largura da base</span></div><div><b>${s.layers.length}</b><span>camadas</span></div><div><b>${n(vol, 1)} m³</b><span>de gabião por metro de muro</span></div></div>
+          ${desenho(s)}
+          <p style="margin:0 0 10px">Camadas da base ao topo: <b>${s.layers.map(l => n(l.b, 0) + (l.h === 0.5 ? ' (½)' : '')).join(' / ')} m</b>, muro inclinado ${s.batter}° e base ${n(s.D, 1)} m enterrada.</p>
+          <ul class="qfs"><li>Deslizamento ${fs(pior.FSd)} ≥ 1,5</li><li>Tombamento ${fs(pior.FSt)} ≥ 2,0</li>${glob ? `<li>Global ${fs(glob.FS)} ≥ 1,5</li>` : ''}</ul>
+          ${r.drained ? '<p class="qwarn"><b>Só passa com drenagem:</b> foi preciso considerar a água a no máximo 1/3 da altura. Faça dreno de pé, geotêxtil atrás do muro e canaleta no topo.</p>' : ''}
+          <a class="btn btn-main" href="app/">Fazer o projeto completo grátis</a>
+          <small>Pré-dimensionamento com valores típicos de solo. O programa completo calcula com os dados reais da sua obra, desenha, tira os quantitativos e gera o memorial. Toda obra precisa de engenheiro responsável e ART.</small>`;
+      } else {
+        const f = (r.closest && r.closest.fails) || [];
+        const motivo = f.includes('tensão no solo') ? 'o solo embaixo do muro não aguenta o peso. Será preciso melhorar a fundação (troca de solo, rachão ou base de concreto magro).'
+          : f.includes('estabilidade global') ? 'o terreno em volta pode romper mesmo com o muro maior. O caso pede melhoria do terreno ou estudo geotécnico.'
+          : 'nenhuma largura de caixas inteiras fecha com essa altura, água e carga. Reduza a água com drenagem ou divida em muros escalonados.';
+        out.innerHTML = `<p class="qwarn"><b>Sem solução só com gabião:</b> ${motivo}</p><p class="ph">No programa completo você ajusta a fundação, a drenagem e a geometria e vê na hora o que resolve.</p><p><a class="btn btn-main" href="app/">Abrir o programa grátis</a></p>`;
+      }
+    } catch (err) {
+      out.innerHTML = '<p class="qwarn">Não foi possível calcular agora. Tente de novo.</p>';
+    }
+    go.disabled = false; go.textContent = 'Calcular o muro';
+  });
+})();
+</script>
 </body>
 </html>

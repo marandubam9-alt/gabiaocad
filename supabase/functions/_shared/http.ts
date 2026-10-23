@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
 export const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('SITE_URL') ?? '*',

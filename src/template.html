@@ -142,6 +142,20 @@ details.grp[open]>summary::after{content:"–"}
 #corteWrap svg{min-width:620px}
 .banner{flex-wrap:wrap}
 #view3d{position:relative;height:480px;max-height:70vh}
+.fotobar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:10px}
+.fotothumbs{display:flex;gap:6px}
+.fthumb{width:46px;height:46px;padding:0;border:2px solid var(--line);border-radius:6px;overflow:hidden;cursor:pointer;background:none}
+.fthumb[aria-pressed="true"]{border-color:var(--accent)}
+.fthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.fototools{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.frange{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.frange input{width:110px}
+.fotoempty{display:grid;gap:6px;max-width:62ch;padding:28px 18px;margin:0 auto;text-align:center}
+.fotostage{position:relative;margin:0 auto;touch-action:none;user-select:none;background:#111}
+.fotostage img,.fotostage canvas,.fotostage svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.fotostage .fh{cursor:grab}.fotostage .fh:focus{outline:none}.fotostage .fh:focus circle:nth-child(2){stroke:#FF9E2C}
+.fotofit{color:var(--warn);font-weight:600;margin:8px 0 0}
+.fotonote{margin:8px 0 0}
 #view3d canvas{display:block;width:100%;height:100%;border-radius:4px}
 .v3hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);background:var(--panel);padding:3px 8px;border-radius:4px;border:1px solid var(--line)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);padding:6px 4px 0}
@@ -489,6 +503,7 @@ textarea:focus{outline:none;border-color:var(--steel)}
         <button class="tab" role="tab" aria-selected="true" data-view="corte" type="button">Corte</button>
         <button class="tab" role="tab" aria-selected="false" data-view="vista" type="button">Vista frontal</button>
         <button class="tab" role="tab" aria-selected="false" data-view="3d" type="button">3D</button>
+        <button class="tab" role="tab" aria-selected="false" data-view="foto" type="button">Na foto</button>
       </div>
       <div class="view" id="viewCorte">
         <div class="svgwrap" id="corteWrap"></div>
@@ -504,6 +519,28 @@ textarea:focus{outline:none;border-color:var(--steel)}
       </div>
       <div class="view" id="viewVista" hidden><div class="svgwrap" id="vistaWrap"></div></div>
       <div class="view" id="view3dWrap" hidden><div id="view3d"><span class="v3hint">Arraste para girar · role para aproximar</span></div></div>
+      <div class="view" id="viewFoto" hidden>
+        <div class="fotobar">
+          <label class="btn" for="fotoFile">Escolher foto do local</label><input type="file" id="fotoFile" accept="image/jpeg,image/png,image/webp" hidden>
+          <div class="fotothumbs" id="fotoThumbs"></div>
+          <div class="fototools" id="fotoTools" hidden>
+            <button class="btn" type="button" id="fotoEdit" aria-pressed="true">Esconder pontos</button>
+            <label class="frange">Opacidade <input type="range" id="fotoOp" min="0.3" max="1" step="0.05" value="1"></label>
+            <label class="frange">Perspectiva <input type="range" id="fotoLens" min="0.4" max="2.5" step="0.01" value="0.8"></label>
+            <button class="btn" type="button" id="fotoLensAuto" title="Perspectiva automática">Auto</button>
+            <button class="btn" type="button" id="fotoReset">Recomeçar</button>
+            <button class="btn primary" type="button" id="fotoSave">Baixar imagem</button>
+          </div>
+        </div>
+        <div class="fotoempty" id="fotoEmpty">
+          <b>Veja o muro calculado na foto do local.</b>
+          <span>Escolha uma foto do barranco ou da margem. Depois arraste os 4 pontos: os dois pés do muro, no nível do chão da frente, e os dois cantos do topo. O muro do projeto aparece no lugar, com as mesmas camadas, degraus e inclinação.</span>
+          <span class="help">Melhor com a foto tirada de frente ou um pouco de lado, mostrando o trecho inteiro do muro.</span>
+        </div>
+        <div class="fotostage" id="fotoStage" hidden><img id="fotoImg" alt="Foto do local com o muro projetado"><canvas id="fotoCanvas"></canvas><svg id="fotoSvg" preserveAspectRatio="none"></svg></div>
+        <p class="help fotofit" id="fotoFit" hidden>Os pontos não combinam com o tamanho do muro (comprimento × altura). Confira se marcou os pés e o topo certos, ou ajuste a perspectiva.</p>
+        <p class="help fotonote">Ilustração para mostrar como o muro vai ficar. As medidas valem pelo projeto, não pela imagem. Arraste os pontos ou use as setas do teclado.</p>
+      </div>
     </div>
 
     <div class="results">

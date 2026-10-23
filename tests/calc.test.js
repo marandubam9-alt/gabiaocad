@@ -99,5 +99,35 @@ const Ea = 0.5 * 18 * H * H / 3;          // Rankine, Ka = 1/3
   total++; if (!g || !(g.FS > 1.2 && g.FS < 4)) { falhas++; console.error('✗ H estabilidade global fora da faixa', g && g.FS); }
 }
 
+// I — muro na foto: câmera sintética -> 4 pontos -> recupera lente e posição
+{
+  const s = base(); s.layers = [{ b: 3, h: 1 }, { b: 2, h: 1 }, { b: 1, h: 1 }]; s.D = 0.5; s.batter = 6; s.L = 12;
+  const { V3m: V } = C, w = 4000, h = 3000, f0 = 0.85 * w;
+  // câmera de verdade: 9 m à frente, 3 m à direita, 1,7 m de altura, olhando para o meio do muro
+  const C0 = [3, 1.7, 9], alvo = [0, 1.2, -1];
+  const zc = V.un(V.sub(alvo, C0)), xc = V.un(V.cr(zc, [0, -1, 0])), yc = V.cr(zc, xc);
+  const cam0 = { Rw: [xc, yc, zc], C: C0, f: f0, w, h };
+  const a = C.fotoAnchor(s), pts = C.fotoCorners(a).map(P => C.projectPoint(cam0, P).slice(0, 2));
+  const cam = C.cameraFromPoints(s, pts, w, h, 0);
+  total++; if (!cam) { falhas++; console.error('✗ I câmera não encontrada'); }
+  else {
+    perto('I lente recuperada', cam.f, f0, 0.01);
+    perto('I câmera x', cam.C[0], C0[0], 0.02); perto('I câmera y', cam.C[1], C0[1], 0.02); perto('I câmera z', cam.C[2], C0[2], 0.02);
+    // ponto fora da face (canto de trás do topo): precisa cair no mesmo pixel
+    const P = [s.L / 2, 3 * Math.cos(6 * Math.PI / 180) - 1 * Math.sin(6 * Math.PI / 180) * 0, -1.2];
+    const q0 = C.projectPoint(cam0, P), q = C.projectPoint(cam, P);
+    total++; if (!(Math.hypot(q[0] - q0[0], q[1] - q0[1]) < 2)) { falhas++; console.error('✗ I ponto 3D fora do lugar', q, q0); }
+    total++; if (!(cam.erro < 1e-4)) { falhas++; console.error('✗ I erro de encaixe', cam.erro); }
+    // projeto muda (muro mais alto): o pé continua no mesmo pixel
+    const s2 = JSON.parse(JSON.stringify(s)); s2.layers.push({ b: 1, h: 1 });
+    const c2 = C.cameraAt(cam, s2), pe = C.projectPoint(c2, C.fotoCorners(C.fotoAnchor(s2))[0]);
+    total++; if (!(Math.hypot(pe[0] - pts[0][0], pe[1] - pts[0][1]) < 2)) { falhas++; console.error('✗ I pé saiu do lugar'); }
+  }
+  // foto de frente: lente não é medível, usa a típica e os cantos ainda encaixam
+  const hp = 2000 * C.fotoAnchor(s).Hs / s.L, fr = [[1000, 2200], [3000, 2200], [3000, 2200 - hp], [1000, 2200 - hp]];
+  const cf = C.cameraFromPoints(s, fr, w, h, 0);
+  total++; if (!cf || cf.fMedida || !(cf.erro < 0.05)) { falhas++; console.error('✗ I foto de frente', cf && cf.erro); }
+}
+
 assert.equal(falhas, 0, `${falhas} de ${total} verificações do cálculo falharam`);
 console.log(`cálculo: ${total} verificações OK`);

@@ -491,6 +491,33 @@ function resize3D() {
   V3.renderer.setSize(w, h, false); V3.camera.aspect = w / h; V3.camera.updateProjectionMatrix(); render3D();
 }
 function render3D() { if (V3.ready) V3.renderer.render(V3.scene, V3.camera); }
+/* caixa com a textura em metros em todas as faces (1 repetição = 1 m), sem esticar no topo nem nas pontas */
+function boxMetricUV(w, h, d) {
+  const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) { const i = f * 4 + k; uv.setXY(i, uv.getX(i) * dims[f][0], uv.getY(i) * dims[f][1]); }
+  return g;
+}
+/* caixas do muro em 3D (usado pela aba 3D e pela montagem na foto) */
+function wallGroup3D(tex, edgeMat, o) {
+  const L = st.L, Rr = rects(st), grp = new THREE.Group(), mats = {};
+  st.layers.forEach((l, i) => {
+    const r = Rr[i];
+    layerBoxes(st, i).forEach(bx => {
+      const key = String(bx.cf && o.cf !== false);
+      if (!mats[key]) mats[key] = new THREE.MeshStandardMaterial(Object.assign({ map: tex, roughness: .95, metalness: .05, color: key === 'true' ? 0xf2d2b0 : 0xffffff }, o.mat || {}));
+      const geo = boxMetricUV(bx.len - 0.01, l.h - 0.01, bx.tw - 0.01);
+      const mesh = new THREE.Mesh(geo, mats[key]);
+      mesh.position.set(bx.s0 + bx.len / 2 - L / 2, (r.y0 + r.y1) / 2, -(bx.t0 + bx.tw / 2));
+      if (o.order !== undefined) mesh.renderOrder = o.order;
+      grp.add(mesh);
+      const ed = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat); ed.position.copy(mesh.position);
+      if (o.order !== undefined) ed.renderOrder = o.order + 1;
+      grp.add(ed);
+    });
+  });
+  grp.rotation.x = -st.batter * Math.PI / 180;
+  return grp;
+}
 function build3D(resetCam) {
   if (!V3.ready) return;
   const { scene } = V3;
@@ -503,22 +530,9 @@ function build3D(resetCam) {
   if (V3.env) { scene.remove(V3.env); disposeAll(V3.env); }
   const cs = getComputedStyle(document.documentElement);
   scene.background = new THREE.Color(cs.getPropertyValue('--panel2').trim() || '#eef2f4');
-  const L = st.L, Rr = rects(st), grp = new THREE.Group(), env = new THREE.Group();
+  const L = st.L, Rr = rects(st), env = new THREE.Group();
   const edgeMat = V3.edgeMat || (V3.edgeMat = new THREE.LineBasicMaterial({ color: 0x2b3238 }));
-  const mats = {};
-  st.layers.forEach((l, i) => {
-    const r = Rr[i];
-    layerBoxes(st, i).forEach(bx => {
-      const key = bx.len.toFixed(2) + '|' + l.h + '|' + bx.cf;
-      if (!mats[key]) { const t = V3.tex.clone(); t.needsUpdate = true; t.repeat.set(bx.len, l.h); mats[key] = new THREE.MeshStandardMaterial({ map: t, roughness: .95, metalness: .05, color: bx.cf ? 0xf2d2b0 : 0xffffff }); }
-      const geo = new THREE.BoxGeometry(bx.len - 0.01, l.h - 0.01, bx.tw - 0.01);
-      const mesh = new THREE.Mesh(geo, mats[key]);
-      mesh.position.set(bx.s0 + bx.len / 2 - L / 2, (r.y0 + r.y1) / 2, -(bx.t0 + bx.tw / 2));
-      grp.add(mesh);
-      const ed = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat); ed.position.copy(mesh.position); grp.add(ed);
-    });
-  });
-  grp.rotation.x = -st.batter * Math.PI / 180;
+  const grp = wallGroup3D(V3.tex, edgeMat, {});
   const g = geometryGlobal(st);
   const soilCol = new THREE.Color(cs.getPropertyValue('--soil').trim() || '#b39467');
   const front = new THREE.Mesh(new THREE.PlaneGeometry(L + 6, 6), new THREE.MeshStandardMaterial({ color: soilCol, transparent: true, opacity: .55, side: THREE.DoubleSide }));
@@ -550,6 +564,234 @@ function build3D(resetCam) {
   }
   resize3D(); render3D();
 }
+
+/* ---------- muro na foto (o muro calculado desenhado sobre a foto do local) ---------- */
+const FOTO = { pending: null, file: null, url: null, w: 0, h: 0, pts: null, cam: null, fUser: 0, op: 1, edit: true, T: null, aiPts: new Map(), drag: -1, dirty: true };
+const FOTO_ROT = ['pé esq.', 'pé dir.', 'topo dir.', 'topo esq.'];
+
+function fotoStoneTexture() {
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  x.fillStyle = '#2b2824'; x.fillRect(0, 0, S, S);
+  for (let i = 0; i < 300; i++) {
+    const cx = rnd() * S, cy = rnd() * S, rx = 15 + rnd() * 22, ry = 11 + rnd() * 15, ang = rnd() * Math.PI;
+    const base = 105 + rnd() * 80, warm = rnd() * 22;
+    const col = k => `rgb(${Math.min(255, base * k + warm) | 0},${Math.min(255, base * k + warm * 0.55) | 0},${Math.min(255, base * k) | 0})`;
+    for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) {
+      const px = cx + ox, py = cy + oy; if (px < -60 || px > S + 60 || py < -60 || py > S + 60) continue;
+      const g = x.createRadialGradient(px - rx * 0.35, py - ry * 0.45, 2, px, py, Math.max(rx, ry) * 1.15);
+      g.addColorStop(0, col(1.22)); g.addColorStop(0.55, col(0.97)); g.addColorStop(1, col(0.6));
+      x.fillStyle = g; x.beginPath(); x.ellipse(px, py, rx, ry, ang, 0, Math.PI * 2); x.fill();
+    }
+  }
+  const id = x.getImageData(0, 0, S, S), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const nz = (rnd() - 0.5) * 24; d[i] += nz; d[i + 1] += nz; d[i + 2] += nz; }
+  x.putImageData(id, 0, 0);
+  // tela hexagonal de dupla torção (malha ~ 8 × 10 cm)
+  const cw = S / 10, ch = S / 8, tw = ch * 0.32;
+  const wire = (w, col) => {
+    x.strokeStyle = col; x.lineWidth = w; x.lineCap = 'round';
+    for (let r = -1; r <= 8; r++) for (let k = -1; k <= 10; k++) {
+      const X = k * cw + (r % 2 ? cw / 2 : 0), Y = r * ch;
+      x.beginPath(); x.moveTo(X, Y); x.lineTo(X, Y + tw); x.stroke();
+      x.beginPath(); x.moveTo(X, Y + tw); x.lineTo(X - cw / 2, Y + ch); x.moveTo(X, Y + tw); x.lineTo(X + cw / 2, Y + ch); x.stroke();
+    }
+  };
+  wire(4.5, 'rgba(25,27,29,.75)'); wire(1.6, 'rgba(205,210,214,.85)');
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding; return t;
+}
+function fotoShadowTexture() {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 64; const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(0,0,0,.42)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 4, 64); return new THREE.CanvasTexture(c);
+}
+
+async function fotoInit() {
+  if (FOTO.T) return true;
+  try {
+    if (!window.THREE) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+  } catch (e) { toast('Não foi possível carregar o desenho 3D. Verifique a conexão.'); return false; }
+  const canvas = $('#fotoCanvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+  renderer.setClearColor(0x000000, 0); renderer.outputEncoding = THREE.sRGBEncoding;
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(50, 1, 0.05, 3000);
+  const hemi = new THREE.HemisphereLight(0xf2f5ff, 0x5c4c3c, 0.95), sun = new THREE.DirectionalLight(0xfff0da, 0.85);
+  scene.add(hemi, sun, sun.target);
+  const tex = fotoStoneTexture(); tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  FOTO.T = { renderer, scene, camera, sun, tex, shadowTex: fotoShadowTexture(), edgeMat: new THREE.LineBasicMaterial({ color: 0x1d2022, transparent: true, opacity: 0.5 }), group: null };
+  new ResizeObserver(() => fotoLayout()).observe($('#viewFoto'));
+  return true;
+}
+
+/* monta o muro, o terreno invisível que esconde as partes enterradas e a sombra no pé */
+function fotoBuild() {
+  const T = FOTO.T; if (!T) return;
+  if (T.group) { T.scene.remove(T.group); T.group.traverse(o => { if (o.geometry) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; ms.forEach(m => { if (m.map && m.map !== T.tex && m.map !== T.shadowTex) m.map.dispose(); if (m !== T.edgeMat) m.dispose(); }); }); }
+  const grp = new THREE.Group(), a = fotoAnchor(st), g = geometryGlobal(st), L = st.L;
+  const occ = new THREE.MeshBasicMaterial({ colorWrite: false });
+  // terreno da frente (abaixo da cota D)
+  const front = new THREE.Mesh(new THREE.BoxGeometry(L + 400, 60, 400), occ);
+  front.position.set(0, st.D - 30, a.O[2] + 200 - 0.005); front.renderOrder = 0; grp.add(front);
+  // aterro atrás do muro (do tardoz até o topo)
+  const back = g.back, tb = g.topBack, yb = Math.min(...back.map(p => p.y)) - 40;
+  const sh = new THREE.Shape(); sh.moveTo(back[0].x + 0.02, yb);
+  back.forEach(p => sh.lineTo(p.x + 0.02, p.y)); sh.lineTo(tb.x + 400, tb.y); sh.lineTo(tb.x + 400, yb); sh.lineTo(back[0].x + 0.02, yb);
+  const fill = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: L + 400, bevelEnabled: false }), occ);
+  fill.rotation.y = Math.PI / 2; fill.position.x = -(L + 400) / 2; fill.renderOrder = 0; grp.add(fill);
+  // muro
+  const op = FOTO.op;
+  const wall = wallGroup3D(T.tex, T.edgeMat, { cf: false, order: 1, mat: { roughness: .9, metalness: 0, transparent: op < 1, opacity: op } });
+  T.edgeMat.opacity = 0.5 * op;
+  grp.add(wall);
+  // sombra no pé
+  const shM = new THREE.MeshBasicMaterial({ map: T.shadowTex, transparent: true, depthWrite: false, opacity: op });
+  const shp = new THREE.Mesh(new THREE.PlaneGeometry(L + 0.1, 0.7), shM);
+  shp.rotation.x = -Math.PI / 2; shp.position.set(0, st.D + 0.004, a.O[2] + 0.35); shp.renderOrder = 3; grp.add(shp);
+  T.scene.add(grp); T.group = grp; FOTO.dirty = false;
+}
+
+function fotoCalibrate() {
+  if (!FOTO.pts) return false;
+  const c = cameraFromPoints(st, FOTO.pts, FOTO.w, FOTO.h, FOTO.fUser);
+  if (!c) return false;
+  FOTO.cam = c; FOTO.key = fotoKey(); return true;
+}
+/* pontos acompanham o muro quando o projeto muda */
+const fotoKey = () => JSON.stringify([st.L, st.D, st.batter, st.faceMode, st.layers]);
+function fotoSyncPts() {
+  if (!FOTO.cam || FOTO.drag >= 0 || FOTO.key === fotoKey()) return;
+  FOTO.key = fotoKey();
+  const cam = cameraAt(FOTO.cam, st), q = fotoCorners(fotoAnchor(st)).map(P => projectPoint(cam, P));
+  if (q.every(Boolean)) FOTO.pts = q.map(p => [p[0], p[1]]);
+}
+function fotoRender(target) {
+  const T = FOTO.T; if (!T || !FOTO.cam) return;
+  if (FOTO.dirty) fotoBuild();
+  const cam = cameraAt(FOTO.cam, st), Rw = cam.Rw, C = cam.C, a = fotoAnchor(st);
+  T.camera.position.set(C[0], C[1], C[2]);
+  const m = new THREE.Matrix4().makeBasis(new THREE.Vector3(...Rw[0]), new THREE.Vector3(...Rw[1]).negate(), new THREE.Vector3(...Rw[2]).negate());
+  T.camera.quaternion.setFromRotationMatrix(m);
+  T.camera.fov = 2 * Math.atan(FOTO.h / 2 / cam.f) * 180 / Math.PI; T.camera.aspect = FOTO.w / FOTO.h; T.camera.updateProjectionMatrix();
+  // sol vindo do alto, um pouco à esquerda da câmera
+  T.sun.position.set(C[0] - 6, a.O[1] + 14, C[2] * 0.6 + 4); T.sun.target.position.set(0, a.O[1] + a.Hs / 2, a.O[2]);
+  if (target) { T.renderer.setPixelRatio(1); T.renderer.setSize(target.w, target.h, false); }
+  T.renderer.render(T.scene, T.camera);
+}
+
+function fotoLayout() {
+  if (!FOTO.w || $('#viewFoto').hidden) return;
+  const view = $('#viewFoto'), maxW = Math.max(200, view.clientWidth - 20), maxH = Math.max(260, window.innerHeight * 0.72);
+  const k = Math.min(maxW / FOTO.w, maxH / FOTO.h), W = Math.round(FOTO.w * k), H = Math.round(FOTO.h * k);
+  const stg = $('#fotoStage'); stg.style.width = W + 'px'; stg.style.height = H + 'px';
+  if (FOTO.T) { FOTO.T.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); FOTO.T.renderer.setSize(W, H, false); }
+  fotoDraw();
+}
+function fotoDraw() {
+  if (!FOTO.pts) return;
+  fotoRender();
+  const svg = $('#fotoSvg'), stg = $('#fotoStage'), k = FOTO.w / Math.max(1, stg.clientWidth), r = 11 * k, P = FOTO.pts;
+  svg.setAttribute('viewBox', `0 0 ${FOTO.w} ${FOTO.h}`);
+  const poly = P.map(p => p.join(',')).join(' ');
+  svg.innerHTML = FOTO.edit ? `<polygon points="${poly}" fill="none" stroke="#fff" stroke-width="${2.5 * k}" stroke-dasharray="${8 * k} ${6 * k}" opacity=".9"/>
+    <polygon points="${poly}" fill="none" stroke="#000" stroke-width="${1 * k}" stroke-dasharray="${8 * k} ${6 * k}" stroke-dashoffset="${7 * k}" opacity=".5"/>` +
+    P.map((p, i) => `<g class="fh" data-i="${i}" tabindex="0" role="slider" aria-label="Ponto ${FOTO_ROT[i]}: arraste ou use as setas" aria-valuetext="${Math.round(p[0])}, ${Math.round(p[1])}">
+      <circle cx="${p[0]}" cy="${p[1]}" r="${r * 2.2}" fill="transparent"/>
+      <circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="#D86A1B" stroke="#fff" stroke-width="${2.5 * k}"/>
+      <text x="${p[0]}" y="${p[1] + (i < 2 ? 2.6 : -1.9) * r}" font-size="${13 * k}" text-anchor="middle" fill="#fff" stroke="#000" stroke-width="${3 * k}" paint-order="stroke" font-family="system-ui,sans-serif" font-weight="600">${FOTO_ROT[i]}</text></g>`).join('') : '';
+  const e = FOTO.cam ? FOTO.cam.erro : 0, bad = FOTO.edit && e > 0.025 && FOTO.drag < 0;
+  $('#fotoFit').hidden = !bad;
+  if (bad) {
+    const a = fotoAnchor(st), fl = fitLength(st, FOTO.pts, FOTO.w, FOTO.h, FOTO.fUser);
+    const sug = fl && fl.erro < e * 0.6 ? ` Pelos pontos, o trecho marcado tem cerca de <b>${fmt(fl.L, fl.L < 10 ? 1 : 0)} m</b> de comprimento; o projeto tem ${fmt(st.L, 1)} m. Se a foto mostra só uma parte do muro, ajuste o comprimento no projeto ou marque o muro inteiro.` : '';
+    $('#fotoFit').innerHTML = `Os pontos não combinam com o tamanho do muro (${fmt(st.L, 1)} m de comprimento × ${fmt(a.Hs * a.e2[1], 1)} m de altura acima do chão).${sug} Confira também se marcou os pés no chão da frente e o topo do muro.`;
+  }
+  $('#fotoLens').value = (FOTO.cam ? FOTO.cam.f : 0.8 * Math.max(FOTO.w, FOTO.h)) / Math.max(FOTO.w, FOTO.h);
+}
+
+/* carrega uma foto (File) e posiciona os pontos: os da IA, os já marcados ou um retângulo inicial */
+async function fotoSet(file, ptsNorm) {
+  if (!(await fotoInit())) return;
+  const nova = FOTO.file !== file;
+  if (nova) {
+    if (FOTO.url) URL.revokeObjectURL(FOTO.url);
+    const url = URL.createObjectURL(file), img = $('#fotoImg');
+    img.src = url; try { await img.decode(); } catch (e) { toast('Não foi possível abrir essa foto.'); return; }
+    Object.assign(FOTO, { file, url, w: img.naturalWidth, h: img.naturalHeight, pts: null, cam: null, fUser: 0 });
+  }
+  const pn = ptsNorm || (nova ? FOTO.aiPts.get(file) : null);
+  if (pn) FOTO.pts = pn.map(p => [p[0] * FOTO.w, p[1] * FOTO.h]);
+  else if (!FOTO.pts) {
+    const a = fotoAnchor(st), wPx = 0.6 * FOTO.w, hPx = Math.min(0.55 * FOTO.h, wPx * a.Hs / Math.max(0.1, a.L)), x0 = 0.2 * FOTO.w, yb = 0.78 * FOTO.h;
+    FOTO.pts = [[x0, yb], [x0 + wPx, yb], [x0 + wPx, yb - hPx], [x0, yb - hPx]];
+  }
+  FOTO.dirty = true; fotoCalibrate();
+  $('#fotoEmpty').hidden = true; $('#fotoStage').hidden = false; $('#fotoTools').hidden = false;
+  fotoThumbs(); fotoLayout();
+}
+function fotoThumbs() {
+  const box = $('#fotoThumbs'); box.innerHTML = '';
+  AI.files.forEach((f, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'fthumb'; b.setAttribute('aria-pressed', f === FOTO.file); b.setAttribute('aria-label', 'Usar a foto ' + (i + 1));
+    const im = document.createElement('img'); im.alt = ''; im.src = URL.createObjectURL(f); im.onload = () => URL.revokeObjectURL(im.src);
+    b.append(im); b.onclick = () => fotoSet(f); box.append(b);
+  });
+}
+async function fotoShow() {
+  if (FOTO.pending) { const pd = FOTO.pending; FOTO.pending = null; await fotoSet(pd.file, pd.pts); }
+  else if (!FOTO.file && AI.files.length) await fotoSet(AI.files[0]);
+  else { fotoThumbs(); fotoSyncPts(); fotoLayout(); }
+}
+
+/* arrastar os pontos (mouse, dedo ou teclado) */
+(function fotoPointer() {
+  const svg = $('#fotoSvg');
+  const toImg = e => { const r = svg.getBoundingClientRect(); return [Math.min(FOTO.w, Math.max(0, (e.clientX - r.left) * FOTO.w / r.width)), Math.min(FOTO.h, Math.max(0, (e.clientY - r.top) * FOTO.h / r.height))]; };
+  let raf = 0;
+  const redraw = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; fotoCalibrate(); fotoDraw(); }); };
+  svg.addEventListener('pointerdown', e => {
+    const h = e.target.closest('.fh'); if (!h) return;
+    e.preventDefault(); FOTO.drag = +h.dataset.i; svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', e => { if (FOTO.drag < 0) return; FOTO.pts[FOTO.drag] = toImg(e); redraw(); });
+  const end = () => { if (FOTO.drag < 0) return; FOTO.drag = -1; fotoCalibrate(); fotoDraw(); };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  svg.addEventListener('keydown', e => {
+    const h = e.target.closest('.fh'); if (!h) return;
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]; if (!d) return;
+    e.preventDefault(); const i = +h.dataset.i, st8 = (e.shiftKey ? 0.02 : 0.004) * Math.max(FOTO.w, FOTO.h);
+    FOTO.pts[i] = [Math.min(FOTO.w, Math.max(0, FOTO.pts[i][0] + d[0] * st8)), Math.min(FOTO.h, Math.max(0, FOTO.pts[i][1] + d[1] * st8))];
+    fotoCalibrate(); fotoDraw(); const n = $(`#fotoSvg .fh[data-i="${i}"]`); if (n) n.focus();
+  });
+})();
+
+/* imagem final: foto + muro + faixa com o aviso */
+async function fotoComposite(maxSide) {
+  if (!FOTO.T || !FOTO.cam) return null;
+  const k = Math.min(1, (maxSide || 2000) / Math.max(FOTO.w, FOTO.h)), W = Math.round(FOTO.w * k), H = Math.round(FOTO.h * k);
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  x.drawImage($('#fotoImg'), 0, 0, W, H);
+  fotoRender({ w: W, h: H }); x.drawImage(FOTO.T.renderer.domElement, 0, 0, W, H);
+  fotoLayout();
+  const Ht = st.layers.reduce((s, l) => s + l.h, 0), fs = Math.max(12, Math.round(W / 70)), bh = Math.round(fs * 2.4);
+  x.fillStyle = 'rgba(18,27,35,.82)'; x.fillRect(0, H - bh, W, bh);
+  x.fillStyle = '#fff'; x.font = `600 ${fs}px "IBM Plex Sans", system-ui, sans-serif`; x.textBaseline = 'middle';
+  x.fillText(`GabiãoCAD · ${st.nome || 'muro de gabião'} · H ${fmt(Ht, 1)} m · L ${fmt(st.L, 1)} m`, fs, H - bh / 2);
+  x.font = `400 ${Math.round(fs * 0.85)}px "IBM Plex Sans", system-ui, sans-serif`; x.textAlign = 'right'; x.fillStyle = '#C9D3DA';
+  x.fillText('Ilustração. As medidas valem pelo projeto.', W - fs, H - bh / 2);
+  return { canvas: c, w: W, h: H };
+}
+
+$('#fotoFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && /^image\/(jpeg|png|webp)$/.test(f.type)) fotoSet(f); else if (f) toast('Use uma foto JPG, PNG ou WebP.'); });
+$('#fotoEdit').onclick = () => { FOTO.edit = !FOTO.edit; $('#fotoEdit').setAttribute('aria-pressed', FOTO.edit); $('#fotoEdit').textContent = FOTO.edit ? 'Esconder pontos' : 'Ajustar pontos'; fotoDraw(); };
+$('#fotoOp').oninput = e => { FOTO.op = +e.target.value; FOTO.dirty = true; fotoDraw(); };
+$('#fotoLens').oninput = e => { FOTO.fUser = +e.target.value * Math.max(FOTO.w, FOTO.h); fotoCalibrate(); fotoDraw(); };
+$('#fotoLensAuto').onclick = () => { FOTO.fUser = 0; fotoCalibrate(); fotoDraw(); };
+$('#fotoReset').onclick = () => { if (!FOTO.file) return; FOTO.pts = null; FOTO.fUser = 0; FOTO.aiPts.delete(FOTO.file); fotoSet(FOTO.file); };
+$('#fotoSave').onclick = async () => {
+  const r = await fotoComposite(2400); if (!r) return;
+  const blob = await new Promise(res => r.canvas.toBlob(res, 'image/jpeg', 0.9));
+  await saveFile(slug() + '-na-foto.jpg', blob);
+};
 
 /* ---------- casos de água / rio ---------- */
 function renderCases() {
@@ -617,6 +859,7 @@ function updateCore() {
     $('#fixBeta').onclick = () => { st.soil.beta = 0; fillInputs(); update(); document.getElementById('sbeta').closest('details').open = true; };
   }
   if (V3.ready && !$('#view3dWrap').hidden) { clearTimeout(update._t); update._t = setTimeout(() => build3D(false), 150); }
+  if (FOTO.cam) { FOTO.dirty = true; if (!$('#viewFoto').hidden) { clearTimeout(FOTO._t); FOTO._t = setTimeout(() => { fotoSyncPts(); fotoDraw(); }, 120); } }
 }
 /* motivos para manter a estabilidade global ligada (usado quando ela está desligada) */
 function globRisk() {
@@ -720,8 +963,9 @@ function renderDrawings() {
 $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab').forEach(x => x.setAttribute('aria-selected', x === t));
   const v = t.dataset.view;
-  $('#viewCorte').hidden = v !== 'corte'; $('#viewVista').hidden = v !== 'vista'; $('#view3dWrap').hidden = v !== '3d';
+  $('#viewCorte').hidden = v !== 'corte'; $('#viewVista').hidden = v !== 'vista'; $('#view3dWrap').hidden = v !== '3d'; $('#viewFoto').hidden = v !== 'foto';
   if (v === '3d') { if (!V3.ready) init3D(); else { build3D(false); resize3D(); } }
+  if (v === 'foto') fotoShow();
 });
 
 /* ---------- tema ---------- */
@@ -931,6 +1175,16 @@ async function exportPdf() {
   let vw = CW, vh = vw * vista.h / vista.w; if (vh > 70) { vh = 70; vw = vh * vista.w / vista.h; }
   need(vh + 4);
   doc.addImage(vista.canvas.toDataURL('image/jpeg', 0.9), 'JPEG', ML, y, vw, vh); y += vh + 6;
+  // muro na foto do local (se o usuário montou)
+  if (FOTO.cam && FOTO.file) {
+    const fc = await fotoComposite(1800);
+    if (fc) {
+      let fw = CW, fh = fw * fc.h / fc.w; if (fh > 120) { fh = 120; fw = fh * fc.w / fc.h; }
+      heading('Ilustração no local', fh + 24);          // título e imagem na mesma página
+      doc.addImage(fc.canvas.toDataURL('image/jpeg', 0.88), 'JPEG', ML + (CW - fw) / 2, y, fw, fh); y += fh + 2;
+      font('normal', 7.5, C.muted); doc.text('Montagem do muro projetado sobre a foto do local. É uma ilustração: as medidas valem pelo projeto, não pela imagem.', ML, y + 3); y += 8;
+    }
+  }
   // quantitativos
   heading('Quantitativos', 60);
   const qb = [];
@@ -1169,6 +1423,7 @@ Regras:
 - Seja prático, em português simples, para quem executa a obra. Sem enrolação.
 - Se as fotos não mostrarem um local de obra/terreno, diga isso no resumo e deixe as listas vazias.
 - Sugira camadas de baixo para cima com altura 0,5 ou 1,0 m e base em torno de 0,5 a 0,7 da altura total em terreno seco e 0,8 a 1,0 com água no aterro ou rio. Depois da sua sugestão o programa ajusta automaticamente as larguras para passar em todas as verificações. Camadas em fila têm largura em metros inteiros (1,0; 2,0; 3,0...), porque cada caixa tem 1,0 m de largura. Camadas em contraforte podem ter 1,5 m e somas de caixas de 1,5/2/3/4 m.
+- Em "posicao_na_foto", indique na foto que melhor mostra o local onde ficaria a face do muro proposto: os pés no nível do chão da frente e o topo na altura do muro. Coordenadas de 0 a 1 (x da esquerda para a direita, y de cima para baixo). Use null se não der para indicar.
 - Nunca dispense a verificação por engenheiro responsável.
 
 Responda SOMENTE com um objeto JSON neste formato:
@@ -1189,7 +1444,8 @@ Responda SOMENTE com um objeto JSON neste formato:
  "como_fazer": ["passos da execução neste local"],
  "drenagem": ["medidas de drenagem"],
  "riscos": ["riscos e cuidados que você percebe nas fotos"],
- "conferir_no_local": ["o que medir ou verificar antes de executar"]
+ "conferir_no_local": ["o que medir ou verificar antes de executar"],
+ "posicao_na_foto": {"foto": número da foto (1 = primeira), "pe_esquerdo": [x, y], "pe_direito": [x, y], "topo_direito": [x, y], "topo_esquerdo": [x, y]} ou null
 }`;
 }
 
@@ -1213,6 +1469,18 @@ function aiAddFiles(list) {
   aiRenderThumbs();
 }
 
+/* pontos da IA (0 a 1) -> [pé esq., pé dir., topo dir., topo esq.] na ordem certa, ou null */
+function aiFotoPts(r) {
+  const p = r && r.posicao_na_foto; if (!p || typeof p !== 'object') return null;
+  const ok = v => Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n) && +n >= -0.05 && +n <= 1.05);
+  const k = ['pe_esquerdo', 'pe_direito', 'topo_direito', 'topo_esquerdo'];
+  if (!k.every(n => ok(p[n]))) return null;
+  let [bl, br, tr, tl] = k.map(n => p[n].map(v => Math.min(1, Math.max(0, +v))));
+  if (bl[0] > br[0]) [bl, br, tl, tr] = [br, bl, tr, tl];          // esquerda/direita trocadas
+  if (tl[1] > bl[1]) [bl, tl] = [tl, bl]; if (tr[1] > br[1]) [br, tr] = [tr, br];   // topo abaixo do pé
+  const i = Math.round(+p.foto) - 1, idx = i >= 0 && i < AI.files.length ? i : 0;
+  return { idx, pts: [bl, br, tr, tl] };
+}
 function aiRenderResult(r) {
   const L = a => (Array.isArray(a) && a.length ? '<ul>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '<p class="help">—</p>');
   const conf = { baixa: 'warn', media: 'cf', alta: 'ok' }[r.confianca] || 'warn';
@@ -1235,12 +1503,20 @@ function aiRenderResult(r) {
       <div class="aibox"><h4>Riscos e cuidados</h4>${L(r.riscos)}</div>
       <div class="aibox"><h4>Conferir no local</h4>${L(r.conferir_no_local)}</div>
     </div>
-    <div class="row-btns"><button class="btn primary" type="button" id="aiApply">Aplicar sugestão ao projeto</button>
+    <div class="row-btns"><button class="btn primary" type="button" id="aiApply">Aplicar sugestão ao projeto</button><button class="btn" type="button" id="aiFoto">Ver o muro na foto</button>
       <span class="help">Estimativa feita a partir de fotos. Meça no local e confira o cálculo antes de executar.</span></div>`;
   box.hidden = false;
   const canApply = (Array.isArray(r.camadas) && r.camadas.length) || Number.isFinite(+r.altura_m);
   $('#aiApply').hidden = !canApply;
   $('#aiApply').onclick = () => aiApply(r);
+  const fp = aiFotoPts(r), f = AI.files[fp ? fp.idx : 0];
+  if (fp && f) FOTO.aiPts.set(f, fp.pts);
+  $('#aiFoto').hidden = !f;
+  $('#aiFoto').onclick = () => {
+    FOTO.pending = { file: f, pts: fp && fp.pts };
+    $('.tab[data-view="foto"]').click();
+    $('.board').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 }
 
 function aiApply(r) {
@@ -1266,6 +1542,7 @@ function aiApply(r) {
     st.river.apron = true; st.river.lc = Math.max(num(v.colchao_m, 0), 1.5 * st.river.ds);
   } else st.river.on = !!r.leito_rio;
   st = sanitize(st); renderLayers(); fillInputs(); update();
+  const fp = aiFotoPts(r); if (fp && AI.files[fp.idx]) FOTO.pending = { file: AI.files[fp.idx], pts: fp.pts };
   if (!$('#banner').classList.contains('ok')) { toast('A sugestão não passava em tudo. Ajustando com caixas inteiras…'); runOptimize('foto'); }
   else toast('Sugestão aplicada. Todas as verificações OK.');
   document.querySelector('.status').scrollIntoView({ behavior: 'smooth', block: 'start' });

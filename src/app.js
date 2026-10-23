@@ -1288,9 +1288,11 @@ async function aiGo() {
 }
 
 async function aiInit(backend) {
+  const vez = AI.initVez = (AI.initVez || 0) + 1;      // se dois inícios correrem juntos, vale o último
   AI.backend = null;
   const r = await backend.ready().catch(() => ({ ok: false, why: 'A análise de fotos não está disponível.' }));
-  if (r.ok) { AI.backend = backend; $('#aiUnavailable').hidden = true; }
+  if (vez !== AI.initVez) return;
+  if (r.ok) { AI.backend = backend; $('#aiUnavailable').hidden = true; $('#aiKeyBox').hidden = true; $('#aiBody').hidden = false; }
   else if (r.needKey) { $('#aiKeyBox').hidden = false; }
   else { $('#aiUnavailable').hidden = false; $('#aiUnavailable').textContent = r.why; $('#aiBody').hidden = true; }
   aiRenderThumbs();

@@ -352,7 +352,7 @@
     const ate = PLAN.premium_ate ? new Date(PLAN.premium_ate).toLocaleDateString('pt-BR') : null;
     const d = dialog('Minha conta', `
       <div><b>${esc(PLAN.email)}</b><br><span class="help">Plano: ${PLAN.premium ? (PLAN.plano === 'estudante' ? 'Estudante' : 'Premium') : `Teste grátis · restam ${fmtTempo(restante())} de uso`}${PLAN.premium && ate ? (PLAN.mp_status === 'cancelled' ? ` · cancelado, acesso até ${ate}` : ` · renova até ${ate}`) : ''}</span></div>
-      <div class="help">Análises de foto ${PLAN.premium ? 'neste mês' : 'do teste'}: <b>${PLAN.usados} de ${PLAN.premium ? 'uso livre' : PLAN.limite}</b></div>
+      <div class="help">Análises de foto ${PLAN.premium ? 'neste mês' : 'do teste'}: <b>${PLAN.premium ? `${PLAN.usados} usadas (até ${PLAN.limite} por mês)` : `${PLAN.usados} de ${PLAN.limite}`}</b></div>
       <div class="row-btns">
         <button class="btn" type="button" id="cSave">Salvar projeto na nuvem</button>
         <button class="btn" type="button" id="cList">Meus projetos</button>
@@ -469,8 +469,8 @@
       u.innerHTML = 'Entre na sua conta para analisar fotos. O teste grátis tem 5 análises. <button class="btn primary" type="button" id="aiLogin">Entrar</button>';
       document.getElementById('aiLogin').onclick = () => loginDialog();
     } else if (backend === serverAI && PLAN.logged) {
-      document.getElementById('aiBody').hidden = false; document.getElementById('aiUnavailable').hidden = true;
-      aiStatus(PLAN.premium ? '' : `${PLAN.usados} de ${PLAN.limite} análises do teste grátis usadas.`);
+      document.getElementById('aiBody').hidden = false; document.getElementById('aiUnavailable').hidden = true; document.getElementById('aiKeyBox').hidden = true;
+      aiStatus(PLAN.premium ? `Incluída no seu plano: ${PLAN.usados} de até ${PLAN.limite} análises usadas neste mês.` : `${PLAN.usados} de ${PLAN.limite} análises do teste grátis usadas.`);
     }
   };
 

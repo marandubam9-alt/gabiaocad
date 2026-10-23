@@ -21,10 +21,16 @@ Deno.serve(async (req) => {
   if (e1) return json({ erro: 'servidor' }, 500);
   if (usados === -1) return json({ erro: 'limite', limite: P.limite, premium: P.premium, mensagem: P.premium ? 'Você chegou ao limite de uso justo deste mês.' : `O teste grátis tem ${P.limite} análises de foto.` }, 429);
 
+  const chave = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!chave) {
+    await db.rpc('devolver_analise', { p_user: user.id });
+    console.error('ANTHROPIC_API_KEY não configurada');
+    return json({ erro: 'ia', motivo: 'sem_chave', mensagem: 'A análise de fotos ainda não foi configurada no servidor (falta a chave da Anthropic). Avise o suporte.' }, 503);
+  }
   try {
     const r = await fetch((Deno.env.get('ANTHROPIC_API') ?? 'https://api.anthropic.com') + '/v1/messages', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!, 'anthropic-version': '2023-06-01' },
+      headers: { 'content-type': 'application/json', 'x-api-key': chave, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: P.modelo, max_tokens: 4096,
         messages: [{ role: 'user', content: [
@@ -33,13 +39,28 @@ Deno.serve(async (req) => {
         ] }],
       }),
     });
-    const out = await r.json();
-    if (!r.ok) throw new Error(out?.error?.message || String(r.status));
+    const out = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const m = String(out?.error?.message || ''), e = new Error(m || String(r.status)) as Error & { motivo?: string };
+      e.motivo = r.status === 401 || r.status === 403 ? 'chave_invalida'
+        : /credit|billing|balance/i.test(m) ? 'sem_credito'
+        : r.status === 404 || /model/i.test(m) ? 'modelo'
+        : r.status === 429 ? 'limite_api' : r.status >= 500 ? 'anthropic_fora' : 'erro_' + r.status;
+      throw e;
+    }
     const text = (out.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('');
     return json({ text, usados, limite: P.limite, premium: P.premium });
   } catch (e) {
     await db.rpc('devolver_analise', { p_user: user.id });   // não cobra análise que falhou
-    console.error('anthropic', e);
-    return json({ erro: 'ia', mensagem: 'O serviço de análise está indisponível agora. Tente de novo em alguns minutos.' }, 502);
+    const motivo = (e as { motivo?: string })?.motivo || 'rede';
+    console.error('anthropic', motivo, e);
+    const texto: Record<string, string> = {
+      chave_invalida: 'a chave da Anthropic do servidor é inválida',
+      sem_credito: 'a conta da Anthropic do servidor está sem créditos',
+      modelo: 'o modelo de IA configurado não foi encontrado',
+      limite_api: 'muitas análises ao mesmo tempo; tente de novo em instantes',
+      anthropic_fora: 'o serviço da Anthropic está instável',
+    };
+    return json({ erro: 'ia', motivo, mensagem: `O serviço de análise está indisponível agora (${texto[motivo] || 'código ' + motivo}). Tente de novo em alguns minutos.` }, 502);
   }
 });

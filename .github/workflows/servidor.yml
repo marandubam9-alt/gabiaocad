@@ -2,7 +2,7 @@ name: Atualizar servidor (Supabase)
 on:
   push:
     branches: [main]
-    paths: ['supabase/**', 'config/publico.json']
+    paths: ['supabase/**', 'config/publico.json', '.github/workflows/servidor.yml']
   workflow_dispatch:
 jobs:
   deploy:
@@ -31,10 +31,22 @@ jobs:
         if: steps.ref.outputs.ok == 'true'
         with: { version: latest }
       - if: steps.ref.outputs.ok == 'true'
-        run: supabase link --project-ref ${{ steps.ref.outputs.ref }} -p "$SUPABASE_DB_PASSWORD"
+        run: |
+          set +e
+          supabase link --project-ref ${{ steps.ref.outputs.ref }} -p "$SUPABASE_DB_PASSWORD" > saida.txt 2>&1; st=$?
+          cat saida.txt
+          if [ $st -ne 0 ]; then echo "::error title=Ligar ao projeto::$(tail -c 1500 saida.txt | tr '\n' ' ')"; exit $st; fi
       - name: Banco de dados
         if: steps.ref.outputs.ok == 'true'
-        run: supabase db push -p "$SUPABASE_DB_PASSWORD"
+        run: |
+          set +e
+          supabase db push --yes -p "$SUPABASE_DB_PASSWORD" > saida.txt 2>&1; st=$?
+          cat saida.txt
+          if [ $st -ne 0 ]; then
+            # mostra o erro no resumo da execução (a senha nunca aparece: o GitHub esconde os segredos)
+            echo "::error title=Banco de dados::$(tail -c 1500 saida.txt | tr '\n' ' ')"
+            exit $st
+          fi
       - name: Chaves secretas das funções
         if: steps.ref.outputs.ok == 'true'
         env:
@@ -48,6 +60,8 @@ jobs:
       - name: Funções
         if: steps.ref.outputs.ok == 'true'
         run: |
+          set -o pipefail
+          trap 'echo "::error title=Funções::falha ao publicar uma função; veja o log"' ERR
           supabase functions deploy analisar --project-ref ${{ steps.ref.outputs.ref }}
           supabase functions deploy assinar --project-ref ${{ steps.ref.outputs.ref }}
           supabase functions deploy cancelar --project-ref ${{ steps.ref.outputs.ref }}

@@ -69,11 +69,15 @@
   };
 
   /* ---------- diálogo genérico ---------- */
-  function dialog(title, html, wide) {
+  const TRAVADOS = new Set();   // diálogos que só fecham depois do login
+  function dialog(title, html, wide, travado) {
     const d = document.createElement('dialog'); d.className = 'gx' + (wide ? ' gxwide' : '');
-    d.innerHTML = `<div class="gx-h"><h3>${title}</h3><button class="gx-x" type="button" aria-label="Fechar">×</button></div><div class="gx-b">${html}</div>`;
-    document.body.appendChild(d); d.querySelector('.gx-x').onclick = () => d.close();
-    d.addEventListener('close', () => d.remove()); d.showModal(); return d;
+    d.innerHTML = `<div class="gx-h"><h3>${title}</h3>${travado ? '' : '<button class="gx-x" type="button" aria-label="Fechar">×</button>'}</div><div class="gx-b">${html}</div>`;
+    document.body.appendChild(d);
+    if (travado) { TRAVADOS.add(d); d.addEventListener('cancel', e => e.preventDefault()); d.liberar = () => { TRAVADOS.delete(d); d.close(); }; }
+    else d.querySelector('.gx-x').onclick = () => d.close();
+    d.addEventListener('close', () => { if (TRAVADOS.has(d)) { d.showModal(); return; } d.remove(); });
+    d.showModal(); return d;
   }
 
   /* ---------- conta ---------- */
@@ -137,6 +141,7 @@
   const rodape = `<div class="foot">${DESK ? '<span></span>' : '<a href="../">← Voltar para a página inicial</a>'}${legais}</div>`;
   let avisouFim = false;
   function renderGate() {
+    aplicarBloqueio();
     if (!ON) { gate.hidden = true; return; }
     document.body.style.overflow = '';
     if (!PLAN.logged) {
@@ -168,6 +173,28 @@
     }
     gate.hidden = false; document.body.style.overflow = 'hidden';
   }
+  /* sem conta, teste encerrado ou sem conexão: além da tela, desliga todos os comandos do programa */
+  const bloqueado = () => ON && (!PLAN.logged || PLAN.estado === 'expirado' || PLAN.estado === 'offline');
+  function aplicarBloqueio() {
+    const b = bloqueado(); window.GABIAO_BLOQUEADO = b;
+    ['main.app', '#projName', '#btnOpen', '#btnExport', '#exportMenu', '#fileOpen'].forEach(q => { const e = document.querySelector(q); if (e && e.inert !== b) e.inert = b; });
+    if (b) { const m = document.getElementById('exportMenu'); if (m && !m.hidden) m.hidden = true; }
+  }
+  // comandos que não rodam com o acesso bloqueado
+  const avisoBloqueio = () => { if (!PLAN.logged) loginDialog('Entre na sua conta para usar o GabiãoCAD.'); else if (PLAN.estado === 'offline') toast('Sem conexão com a internet.'); else plansDialog('Seu teste grátis terminou. Assine para continuar usando o programa.'); };
+  ['saveFile', 'exportPdf', 'exportXlsx', 'runOptimize', 'aiGo', 'update'].forEach(n => {
+    const orig = window[n]; if (typeof orig !== 'function') return;
+    window[n] = function (...a) { if (bloqueado()) { if (n !== 'update') avisoBloqueio(); return; } return orig.apply(this, a); };
+  });
+  // se a tela de bloqueio for removida ou escondida à força, ela volta
+  function vigiarGate() {
+    if (!bloqueado()) return;
+    if (!gate.isConnected) document.body.appendChild(gate);
+    if (gate.hidden || getComputedStyle(gate).display === 'none' || getComputedStyle(gate).visibility === 'hidden') { gate.hidden = false; gate.style.cssText = ''; renderGate(); }
+    aplicarBloqueio();
+  }
+  new MutationObserver(vigiarGate).observe(document.body, { childList: true, attributes: true, subtree: true, attributeFilter: ['hidden', 'style', 'inert', 'class'] });
+  setInterval(vigiarGate, 2000);
   function avisoFim() {
     if (PLAN.estado !== 'teste' || restante() > 15 * 60 || avisouFim) return;
     avisouFim = true;
@@ -209,6 +236,7 @@
       }
     } else { Object.assign(PLAN, { plano: 'gratis', premium: false, estado: 'expirado', usoSeg: 0, usados: 0, limite: 5 }); gravarCache(null); }
     window.PDF_MARCA_DAGUA = PLAN.premium ? null : 'VERSÃO DE TESTE · GabiãoCAD';
+    if (PLAN.logged) [...TRAVADOS].forEach(d => d.liberar());
     renderAcct(); renderGate(); aiInit(serverAI); applyGates();
     if (PLAN.estado === 'teste') ping(true);
   }
@@ -250,8 +278,18 @@
 
   /* ---------- planos e pagamento ---------- */
   function plansDialog(motivo) {
+    if (ON && !PLAN.logged) {
+      // sem conta: a janela de planos só fecha depois de entrar
+      const d = dialog('GabiãoCAD Premium', `${motivo ? `<p><b>${esc(motivo)}</b></p>` : ''}
+        <p><b>Entre na sua conta para continuar.</b> Depois de entrar você escolhe o plano ou começa o teste grátis de 3 horas.</p>
+        <div class="login" style="display:grid;gap:10px"></div><div data-plans></div>`, false, true);
+      loginForm(d.querySelector('.login'));
+      fillPlans(d.querySelector('[data-plans]'));
+      return d;
+    }
     const d = dialog('GabiãoCAD Premium', `${motivo ? `<p><b>${esc(motivo)}</b></p>` : ''}<div data-plans></div>`);
     fillPlans(d.querySelector('[data-plans]'), () => d.close());
+    return d;
   }
   function fillPlans(el, fechar) {
     el.style.display = 'grid'; el.style.gap = '12px';
@@ -263,7 +301,7 @@
       </div>
       <p class="help">Pagamento pelo Mercado Pago (cartão ou saldo). Cancele quando quiser; 7 dias de arrependimento na primeira assinatura.</p>`;
     el.querySelectorAll('[data-op]').forEach(b => b.onclick = async () => {
-      if (!PLAN.logged) { fechar && fechar(); loginDialog('Entre na sua conta para assinar o Premium.'); return; }
+      if (!PLAN.logged) { const f = el.closest('dialog')?.querySelector('[data-g=email]'); if (f) { f.focus(); toast('Entre na sua conta primeiro.'); return; } fechar && fechar(); loginDialog('Entre na sua conta para assinar o Premium.'); return; }
       b.disabled = true; b.textContent = 'Abrindo…';
       const r = await callFn('assinar', { opcao: b.dataset.op });
       if (r.url && DESK) {

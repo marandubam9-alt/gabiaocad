@@ -70,7 +70,7 @@
     toast('Novo projeto a partir do exemplo.');
   }
 
-  $('#btnOpen').onclick = doOpen;
+  $('#btnOpen').onclick = () => { if (!window.GABIAO_BLOQUEADO) doOpen(); };
   // "Salvar projeto" do menu Exportar vira salvar .gabiao
   const jsonItem = document.querySelector('[data-exp="json"]');
   if (jsonItem) jsonItem.innerHTML = 'Salvar projeto <span>.gabiao</span>';
@@ -85,6 +85,7 @@
     const exp = document.querySelector(`[data-exp="${k}"]`); if (exp) exp.click();
   };
   D.onMenu(a => {
+    if (window.GABIAO_BLOQUEADO && a !== 'tutorial' && a !== 'account') return;   // sem conta ou teste encerrado
     if (a === 'new') doNew();
     else if (a === 'open') doOpen();
     else if (a === 'save') doSave(false);

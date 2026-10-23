@@ -34,7 +34,7 @@ function coulombKa(phi, delta, beta, alphaB) {
 /* Análise do trecho do muro acima da junta j (j=0: base / fundação).
    wet=true: chuva — aterro saturado e nível d'água atrás do muro (st.water). */
 const GW = 9.81;
-const ADESAO = 2 / 3;   // fração da coesão da fundação usada como adesão na base (ca = 2/3·c)
+const ADESAO = 2 / 3;   // fração da coesão da fundação usada como adesão no deslizamento da base
 /* cond: null = seco; { Yw, Yf, gsat } = água atrás (Yw) e na frente (Yf), em m a partir da base */
 function analyze(st, j, cond) {
   if (cond === undefined) cond = defaultCond(st);
@@ -600,4 +600,4 @@ function fullCalc(st) {
   return { ext, seco, cases, gov, internas, q, scour, glob, globSeco, props: propsGabiao(st), geo: geometryGlobal(st) };
 }
 
-if (typeof module !== 'undefined') module.exports = { ADESAO, optimizeDesign, designChecks, wholeBoxProfiles, globalStability, buildCases, scourCheck, layerBoxes, splitWidth, analyze, quantities, autoLayers, fullCalc, coulombKa, rects };
+if (typeof module !== 'undefined') module.exports = { optimizeDesign, designChecks, wholeBoxProfiles, globalStability, buildCases, scourCheck, layerBoxes, splitWidth, analyze, quantities, autoLayers, fullCalc, coulombKa, rects, ADESAO };

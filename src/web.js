@@ -5,8 +5,26 @@
   const DESK = !!window.desktop, D = window.desktop;          // programa instalado (Windows)
   const SITE = (CFG.siteUrl || '').replace(/\/$/, '');
   const ON = !!(CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
-  const sb = ON ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey,
-    DESK ? { auth: { flowType: 'pkce', detectSessionInUrl: false, persistSession: true, autoRefreshToken: true } } : undefined) : null;
+  // login feito no navegador para o programa instalado: o site recebe ?code=... e devolve ao programa
+  const RET_PROGRAMA = !DESK && /[?&]code=/.test(location.search) ? new URLSearchParams(location.search).get('code') : null;
+  if (RET_PROGRAMA) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+  // nenhuma chamada ao servidor fica esperando para sempre (era o que congelava em "Carregando…")
+  function fetchComPrazo(url, opts = {}, ms) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), ms || (/\/functions\/v1\//.test(String(url)) ? 120000 : 12000));
+    if (opts.signal) { if (opts.signal.aborted) c.abort(); else opts.signal.addEventListener('abort', () => c.abort()); }
+    return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(() => clearTimeout(t));
+  }
+  const comPrazo = (pr, ms, msg) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(msg || 'tempo esgotado')), ms))]);
+  const sb = ON ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, Object.assign({ global: { fetch: fetchComPrazo } },
+    DESK ? { auth: { flowType: 'pkce', detectSessionInUrl: false, persistSession: true, autoRefreshToken: true } } : {})) : null;
+  const temSessaoSalva = () => { try { return Object.keys(localStorage).some(k => /^sb-.*-auth-token$/.test(k)); } catch (e) { return false; } };
+  // sair da conta sem depender do servidor responder
+  async function sairConta() {
+    try { await comPrazo(sb.auth.signOut({ scope: 'local' }), 5000); } catch (e) {}
+    try { Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    cloudId = null; PLAN.logged = false; PLAN.email = '';
+    loadPlan();
+  }
   const ASSET = DESK ? './' : '../assets/', PAGE = DESK ? (SITE ? SITE + '/' : '') : '../';
   const VOLTA_APP = 'gabiaocad://auth';                      // retorno do login no programa instalado
   // estado: 'teste' | 'expirado' | 'premium' | 'offline'
@@ -107,32 +125,38 @@
     el.innerHTML = `<button class="btn primary" type="button" data-g="google">Entrar com Google</button>
       <div class="help" style="text-align:center">ou receba um link de acesso no e-mail</div>
       <div class="aikeyrow"><div class="inp"><input data-g="email" type="email" placeholder="seu@email.com" autocomplete="email"></div><button class="btn" type="button" data-g="send">Enviar link</button></div>
-      <div class="aikeyrow" data-g="codebox" hidden><div class="inp"><input data-g="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="código (se vier no e-mail)"></div><button class="btn primary" type="button" data-g="verify">Entrar</button></div>
+      <div class="aikeyrow" data-g="codebox" hidden><div class="inp"><input data-g="code" ${DESK ? '' : 'inputmode="numeric" '}autocomplete="one-time-code" maxlength="${DESK ? 200 : 10}" placeholder="${DESK ? 'cole aqui o código do navegador' : 'código (se vier no e-mail)'}"></div><button class="btn primary" type="button" data-g="verify">Entrar</button></div>
       <p class="help" data-g="msg">${ERRO_LOGIN ? `<b style="color:var(--bad)">${esc(ERRO_LOGIN)}</b>` : 'Estudante: entre com o e-mail da faculdade (.edu.br) para poder assinar o plano Estudante.'}</p>`;
-    const volta = DESK ? VOLTA_APP : location.origin + location.pathname;
+    const volta = DESK ? (SITE ? SITE + '/app/' : VOLTA_APP) : location.origin + location.pathname;
     const msg = el.querySelector('[data-g=msg]'), emailIn = el.querySelector('[data-g=email]'), codeIn = el.querySelector('[data-g=code]');
     el.querySelector('[data-g=google]').onclick = async () => {
       if (!DESK) { await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta } }); return; }
-      const { data, error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, skipBrowserRedirect: true } });
+      let data, error; try { ({ data, error } = await comPrazo(sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, skipBrowserRedirect: true } }), 15000)); } catch (e) { error = e; }
       if (error || !data?.url) { toast('Não foi possível abrir o login: ' + (error?.message || 'sem conexão')); return; }
       D.openExternal(data.url);
-      msg.innerHTML = '<b>Continue no navegador.</b> Depois de entrar, o navegador pergunta se pode abrir o GabiãoCAD: clique em <b>Abrir</b>.';
+      el.querySelector('[data-g=codebox]').hidden = false;
+      msg.innerHTML = '<b>Continue no navegador.</b> Depois de entrar com o Google, clique em <b>Abrir o GabiãoCAD</b> na página que aparecer. Se o programa não abrir sozinho, copie o código mostrado no navegador e cole no campo acima.';
     };
     const enviar = async () => {
       const email = emailIn.value.trim(); if (!/^\S+@\S+\.\S+$/.test(email)) { toast('Digite um e-mail válido.'); return; }
       const b = el.querySelector('[data-g=send]'); b.disabled = true;
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: volta } });
+      let error; try { ({ error } = await comPrazo(sb.auth.signInWithOtp({ email, options: { emailRedirectTo: volta } }), 25000)); } catch (e) { error = { message: 'o servidor não respondeu. Confira a internet e tente de novo' }; }
       b.disabled = false;
       if (error) { msg.innerHTML = `<b style="color:var(--bad)">${/rate|limit|seconds/i.test(error.message) ? 'Muitos pedidos seguidos. Espere 1 minuto e tente de novo.' : 'Não foi possível enviar: ' + esc(error.message)}</b>`; return; }
       el.querySelector('[data-g=codebox]').hidden = false; b.textContent = 'Reenviar'; codeIn.focus();
-      msg.innerHTML = `<b>Enviamos um e-mail para ${esc(email)}.</b> Abra e clique no link para entrar${DESK ? '' : ' neste mesmo navegador'}. Se o e-mail trouxer um código, digite acima. Veja também a caixa de spam ou lixo eletrônico.`;
+      msg.innerHTML = `<b>Enviamos um e-mail para ${esc(email)}.</b> Abra e clique no link para entrar${DESK ? '. Na página que abrir, clique em <b>Abrir o GabiãoCAD</b> ou copie o código e cole acima' : ' neste mesmo navegador'}. Se o e-mail trouxer um código, digite acima. Veja também a caixa de spam ou lixo eletrônico.`;
       aoEnviar && aoEnviar();
     };
     const verificar = async () => {
-      const token = codeIn.value.replace(/\D/g, ''), email = emailIn.value.trim();
-      if (token.length < 6) { toast('Digite o código que chegou no e-mail.'); return; }
+      const bruto = codeIn.value.trim(), email = emailIn.value.trim();
+      // programa: código longo vindo do navegador (ou o endereço inteiro gabiaocad://auth?code=...)
+      const doNavegador = (bruto.match(/[?&]code=([\w-]+)/) || [])[1] || (/^[\w-]{20,}$/.test(bruto) ? bruto : null);
+      if (DESK && doNavegador) { await retornoLogin('gabiaocad://auth?code=' + doNavegador); return; }
+      const token = bruto.replace(/\D/g, '');
+      if (token.length < 6) { toast(DESK ? 'Cole o código mostrado no navegador.' : 'Digite o código que chegou no e-mail.'); return; }
+      if (!email) { toast('Digite o seu e-mail acima.'); return; }
       const b = el.querySelector('[data-g=verify]'); b.disabled = true; b.textContent = 'Entrando…';
-      const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+      let error; try { ({ error } = await comPrazo(sb.auth.verifyOtp({ email, token, type: 'email' }), 25000)); } catch (e) { error = { message: 'O servidor não respondeu. Confira a internet e tente de novo.' }; }
       b.disabled = false; b.textContent = 'Entrar';
       if (error) { msg.innerHTML = `<b style="color:var(--bad)">${/expired|invalid/i.test(error.message) ? 'Código errado ou vencido. Confira ou clique em Reenviar.' : esc(error.message)}</b>`; return; }
       toast('Você entrou na sua conta.'); loadPlan();
@@ -152,16 +176,19 @@
       const u = new URL(url), code = u.searchParams.get('code'), erro = u.searchParams.get('error_description') || new URLSearchParams(u.hash.slice(1)).get('error_description');
       if (erro) { toast('Não foi possível entrar: ' + erro); return; }
       if (!code) return;
-      const { error } = await sb.auth.exchangeCodeForSession(code);
-      if (error) toast('Não foi possível entrar: ' + error.message + '. Peça um link novo.'); else { toast('Você entrou na sua conta.'); loadPlan(); }
-    } catch (e) { toast('Link de acesso inválido.'); }
+      toast('Entrando…');
+      const { error } = await comPrazo(sb.auth.exchangeCodeForSession(code), 25000, 'O servidor não respondeu');
+      if (error) toast(/verifier|code/i.test(error.message) ? 'Esse código já foi usado ou é de outro pedido. Clique em Entrar com Google de novo.' : 'Não foi possível entrar: ' + error.message);
+      else { toast('Você entrou na sua conta.'); loadPlan(); }
+    } catch (e) { toast(/respondeu|tempo/.test(String(e && e.message)) ? 'O servidor não respondeu. Confira a internet e tente de novo.' : 'Código de acesso inválido.'); }
   }
   if (DESK && ON && D.onAuthUrl) { D.onAuthUrl(retornoLogin); D.takePendingAuth().then(u => u && retornoLogin(u)); }
 
   /* ---------- tela de entrada e bloqueio ao fim do teste ---------- */
   const gate = document.createElement('div'); gate.id = 'gate'; gate.hidden = !ON;
-  gate.innerHTML = '<div class="card"><p class="help">Carregando…</p></div>';
+  gate.innerHTML = '<div class="card"><p class="help" data-carregando>Carregando…</p></div>';
   document.body.appendChild(gate);
+  setTimeout(() => { const c = gate.querySelector('[data-carregando]'); if (c) c.innerHTML = '<span class="spinner"></span> Conectando ao servidor… Se demorar, confira a internet. Em alguns segundos aparece a opção de tentar de novo.'; }, 5000);
   const videoTag = (auto) => `<video class="tutv" controls preload="metadata" playsinline poster="${TUTORIAL_CAPA}" ${auto ? 'autoplay' : ''}><source src="${TUTORIAL}" type="video/mp4">Seu navegador não toca vídeo.</video>`;
   const topo = (titulo) => `<div class="top"><img src="${ICON}" alt=""><div><h2>${titulo}</h2></div></div>`;
   const legais = PAGE ? `<span><a href="${PAGE}termos.html" target="_blank">Termos de uso</a> · <a href="${PAGE}privacidade.html" target="_blank">Privacidade</a></span>` : '';
@@ -169,6 +196,7 @@
   let avisouFim = false;
   function renderGate() {
     aplicarBloqueio();
+    if (RET_PROGRAMA) { telaRetornoPrograma(); return; }
     if (!ON) { gate.hidden = true; return; }
     document.body.style.overflow = '';
     if (!PLAN.logged) {
@@ -186,19 +214,36 @@
         <div data-plans></div>
         <div class="foot"><span>Entrou como <b>${esc(PLAN.email)}</b> · <a href="#" data-sair>Sair</a> · <a href="#" data-tut>Ver o tutorial</a></span>${legais}</div></div>`;
       fillPlans(gate.querySelector('[data-plans]'));
-      gate.querySelector('[data-sair]').onclick = async e => { e.preventDefault(); await sb.auth.signOut(); cloudId = null; loadPlan(); };
+      gate.querySelector('[data-sair]').onclick = e => { e.preventDefault(); sairConta(); };
       gate.querySelector('[data-tut]').onclick = e => { e.preventDefault(); tutorialDialog(); };
     } else if (PLAN.estado === 'offline') {
-      gate.innerHTML = `<div class="card">${topo('Sem conexão com a internet')}
-        <p>O GabiãoCAD precisa de internet para conferir sua conta e contar o tempo do teste grátis. Assinantes podem usar o programa instalado sem internet por até 7 dias depois da última conexão.</p>
-        <div class="row-btns"><button class="btn primary" type="button" data-retry>Tentar de novo</button></div>${rodape}</div>`;
+      gate.innerHTML = `<div class="card">${topo('Não foi possível conectar')}
+        <p>O GabiãoCAD não conseguiu falar com o servidor para conferir sua conta. Confira a internet e tente de novo. Assinantes podem usar o programa instalado sem internet por até 7 dias depois da última conexão.</p>
+        <div class="row-btns"><button class="btn primary" type="button" data-retry>Tentar de novo</button><button class="btn" type="button" data-sair>Sair da conta</button></div>${rodape}</div>`;
       gate.querySelector('[data-retry]').onclick = () => { gate.querySelector('[data-retry]').textContent = 'Conectando…'; loadPlan(); };
+      gate.querySelector('[data-sair]').onclick = () => sairConta();
     } else {
       gate.hidden = true; gate.innerHTML = '';
       avisoFim();
       return;
     }
     gate.hidden = false; document.body.style.overflow = 'hidden';
+  }
+  function telaRetornoPrograma() {
+    const link = VOLTA_APP + '?code=' + encodeURIComponent(RET_PROGRAMA);
+    gate.innerHTML = `<div class="card">${topo('Login feito. Volte para o programa')}
+      <p>Você entrou pelo navegador para usar o <b>GabiãoCAD instalado no computador</b>. Clique no botão para voltar ao programa. Se o navegador perguntar, escolha <b>Abrir</b>.</p>
+      <div class="row-btns"><a class="btn primary" href="${link}" data-abrir>Abrir o GabiãoCAD</a></div>
+      <p class="help">O programa não abriu? Copie o código abaixo e cole no programa, no campo <b>“cole aqui o código do navegador”</b>, e clique em Entrar. O código vale por alguns minutos e só uma vez.</p>
+      <div class="aikeyrow"><div class="inp"><input readonly value="${esc(RET_PROGRAMA)}" data-cod aria-label="Código de acesso"></div><button class="btn" type="button" data-copiar>Copiar código</button></div>
+      <div class="foot"><a href="./">Estava usando o site? Entrar aqui no navegador</a>${legais}</div></div>`;
+    gate.hidden = false; document.body.style.overflow = 'hidden';
+    gate.querySelector('[data-copiar]').onclick = async () => {
+      const i = gate.querySelector('[data-cod]'); i.select();
+      try { await navigator.clipboard.writeText(RET_PROGRAMA); } catch (e) { try { document.execCommand('copy'); } catch (e2) {} }
+      toast('Código copiado. Cole no programa.');
+    };
+    if (!telaRetornoPrograma.foi) { telaRetornoPrograma.foi = true; setTimeout(() => { try { location.href = link; } catch (e) {} }, 400); }
   }
   /* sem conta, teste encerrado ou sem conexão: além da tela, desliga todos os comandos do programa */
   const bloqueado = () => ON && (!PLAN.logged || PLAN.estado === 'expirado' || PLAN.estado === 'offline');
@@ -220,7 +265,8 @@
     if (gate.hidden || getComputedStyle(gate).display === 'none' || getComputedStyle(gate).visibility === 'hidden') { gate.hidden = false; gate.style.cssText = ''; renderGate(); }
     aplicarBloqueio();
   }
-  new MutationObserver(vigiarGate).observe(document.body, { childList: true, attributes: true, subtree: true, attributeFilter: ['hidden', 'style', 'inert', 'class'] });
+  let vigiaAgendada = false;
+  new MutationObserver(() => { if (vigiaAgendada) return; vigiaAgendada = true; requestAnimationFrame(() => { vigiaAgendada = false; vigiarGate(); }); }).observe(document.body, { childList: true, attributes: true, subtree: true, attributeFilter: ['hidden', 'style', 'inert', 'class'] });
   setInterval(vigiarGate, 2000);
   function avisoFim() {
     if (PLAN.estado !== 'teste' || restante() > 15 * 60 || avisouFim) return;
@@ -240,8 +286,29 @@
   const CACHE = 'gabiao-plano';
   function lerCache() { try { return JSON.parse(localStorage.getItem(CACHE) || 'null'); } catch (e) { return null; } }
   function gravarCache(v) { try { v ? localStorage.setItem(CACHE, JSON.stringify(v)) : localStorage.removeItem(CACHE); } catch (e) {} }
-  async function loadPlan() {
-    if (!ON) return;
+  let carregando = null, recarregar = false;
+  function loadPlan() {
+    if (!ON) return Promise.resolve();
+    if (carregando) { recarregar = true; return carregando; }
+    carregando = (async () => {
+      try { await comPrazo(carregarPlano(), 20000); }
+      catch (e) { console.warn('GabiãoCAD: falha ao carregar a conta', e); falhaConexao(); }
+      finally { carregando = null; if (recarregar) { recarregar = false; setTimeout(loadPlan, 0); } }
+    })();
+    return carregando;
+  }
+  // servidor fora do ar ou lento: assinante do programa instalado segue com o plano guardado; os outros veem a tela de conexão
+  function falhaConexao() {
+    const logado = PLAN.logged || temSessaoSalva(), c = lerCache(), agora = Date.now();
+    PLAN.logged = logado;
+    const vale = DESK && logado && c && c.premium && agora - c.verificado < 7 * 864e5 && (!c.premium_ate || new Date(c.premium_ate) > agora);
+    if (vale) Object.assign(PLAN, { plano: c.plano, premium: true, premium_ate: c.premium_ate, estado: 'premium' });
+    else if (logado) PLAN.estado = 'offline';
+    else Object.assign(PLAN, { plano: 'gratis', premium: false, estado: 'expirado' });
+    window.PDF_MARCA_DAGUA = PLAN.premium ? null : 'VERSÃO DE TESTE · GabiãoCAD';
+    renderAcct(); renderGate(); applyGates();
+  }
+  async function carregarPlano() {
     const { data: { session } } = await sb.auth.getSession();
     PLAN.logged = !!session; PLAN.email = session?.user?.email || '';
     if (session) {
@@ -295,7 +362,7 @@
       <div id="cConfirm" hidden class="derived">O Premium continua até o fim do período já pago. <button class="btn" type="button" id="cYes">Confirmar cancelamento</button></div>`);
     d.querySelector('#cSave').onclick = () => { d.close(); cloudSave(); };
     d.querySelector('#cList').onclick = () => { d.close(); cloudList(); };
-    d.querySelector('#cOut').onclick = async () => { await sb.auth.signOut(); d.close(); cloudId = null; loadPlan(); toast('Você saiu da conta.'); };
+    d.querySelector('#cOut').onclick = async () => { d.close(); await sairConta(); toast('Você saiu da conta.'); };
     const cp = d.querySelector('#cPro'); if (cp) cp.onclick = () => { d.close(); plansDialog(); };
     const cc = d.querySelector('#cCancel'); if (cc) cc.onclick = () => { d.querySelector('#cConfirm').hidden = false; };
     const cy = d.querySelector('#cYes'); if (cy) cy.onclick = async () => {
@@ -339,9 +406,9 @@
     });
   }
   async function callFn(nome, body) {
-    const { data: { session } } = await sb.auth.getSession();
+    let session = null; try { ({ data: { session } } = await comPrazo(sb.auth.getSession(), 10000)); } catch (e) { return { erro: 'rede', mensagem: 'Sem conexão com o servidor.' }; }
     try {
-      const r = await fetch(`${CFG.supabaseUrl}/functions/v1/${nome}`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: CFG.supabaseAnonKey, Authorization: `Bearer ${session ? session.access_token : CFG.supabaseAnonKey}` }, body: JSON.stringify(body) });
+      const r = await fetchComPrazo(`${CFG.supabaseUrl}/functions/v1/${nome}`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: CFG.supabaseAnonKey, Authorization: `Bearer ${session ? session.access_token : CFG.supabaseAnonKey}` }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({})); j.status = r.status; return j;
     } catch (e) { return { erro: 'rede', mensagem: 'Sem conexão com o servidor.' }; }
   }
@@ -443,7 +510,7 @@
     if (a === 'tutorial') tutorialDialog();
     else if (a === 'account' && ON) PLAN.logged ? accountDialog() : loginDialog();
   });
-  if (ON) sb.auth.onAuthStateChange(() => loadPlan());
+  if (ON) sb.auth.onAuthStateChange(ev => { if (ev !== 'TOKEN_REFRESHED') setTimeout(loadPlan, 0); });
   renderAcct(); loadPlan();
   if (!ON && !DESK) aiInit(serverAI);
 })();

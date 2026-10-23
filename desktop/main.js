@@ -91,8 +91,20 @@ function createWindow() {
   win.on('close', e => {
     if (win.__forceClose) return;
     e.preventDefault();
+    win.__respondeu = false;
     send('query-close');
+    // a tela não respondeu (travada): fecha mesmo assim, para o programa nunca ficar preso
+    setTimeout(() => { if (win && !win.isDestroyed() && !win.__respondeu) { win.__forceClose = true; win.destroy(); } }, 4000);
   });
+  // tela travada: oferece recarregar em vez de deixar o programa congelado
+  win.on('unresponsive', async () => {
+    if (win.__perguntando) return; win.__perguntando = true;
+    const r = await dialog.showMessageBox(win, { type: 'warning', buttons: ['Recarregar', 'Esperar'], defaultId: 0, cancelId: 1,
+      title: 'GabiãoCAD', message: 'O GabiãoCAD não está respondendo.', detail: 'Recarregar reabre a tela do programa. Projetos salvos não são perdidos.' });
+    win.__perguntando = false;
+    if (r.response === 0 && win && !win.isDestroyed()) win.webContents.reload();
+  });
+  win.webContents.on('render-process-gone', () => { if (win && !win.isDestroyed()) win.webContents.reload(); });
 }
 
 ipcMain.handle('save-file', async (_e, { filename, data, filePath, ask }) => {
@@ -179,6 +191,7 @@ ipcMain.handle('take-pending-auth', () => { const u = pendingAuth; pendingAuth =
 ipcMain.handle('show-in-folder', (_e, p) => { if (p) shell.showItemInFolder(p); });
 ipcMain.handle('set-title', (_e, t) => { if (win) win.setTitle(t); });
 ipcMain.handle('confirm-close', async (_e, { dirty }) => {
+  if (win) win.__respondeu = true;
   if (dirty) {
     const r = await dialog.showMessageBox(win, {
       type: 'question', buttons: ['Salvar', 'Não salvar', 'Cancelar'], defaultId: 0, cancelId: 2,
@@ -190,7 +203,7 @@ ipcMain.handle('confirm-close', async (_e, { dirty }) => {
   win.__forceClose = true; win.close();
   return 'closed';
 });
-ipcMain.handle('force-close', () => { win.__forceClose = true; win.close(); });
+ipcMain.handle('force-close', () => { if (win) win.__respondeu = true; win.__forceClose = true; win.close(); });
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();

@@ -19,7 +19,10 @@ jobs:
           ref=$(echo "$url" | sed -nE 's#^https://([a-z0-9]+)\.supabase\.(co|in)/?$#\1#p')
           [ -z "$ref" ] && ref="${{ vars.SUPABASE_PROJECT_REF }}"
           if [ -z "$ref" ] || [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
-            echo "::warning::Falta o endereço do Supabase em config/publico.json ou os segredos SUPABASE_ACCESS_TOKEN / SUPABASE_DB_PASSWORD. Nada foi publicado."
+            falta=""; [ -z "$ref" ] && falta="$falta endereço do Supabase (config/publico.json);"
+            [ -z "$SUPABASE_ACCESS_TOKEN" ] && falta="$falta segredo SUPABASE_ACCESS_TOKEN;"
+            [ -z "$SUPABASE_DB_PASSWORD" ] && falta="$falta segredo SUPABASE_DB_PASSWORD;"
+            echo "::warning::Nada foi publicado. Falta:$falta"
             echo "ok=false" >> "$GITHUB_OUTPUT"
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"; echo "ref=$ref" >> "$GITHUB_OUTPUT"

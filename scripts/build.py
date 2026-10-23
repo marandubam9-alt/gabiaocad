@@ -69,9 +69,22 @@ def build_site():
     open(os.path.join(app, 'index.html'), 'w', encoding='utf-8').write(html)
     print('site ->', out, f'({len(html)//1024} KB app)', 'contas ligadas' if cfg['supabaseUrl'] else 'contas desligadas (sem SUPABASE_URL)')
 
+def publico():
+    # config/publico.json (no repositório) tem prioridade; depois as variáveis do GitHub
+    try: pub = json.load(open(os.path.join(ROOT, 'config', 'publico.json'), encoding='utf-8'))
+    except FileNotFoundError: pub = {}
+    def val(chave, env, padrao):
+        v = (pub.get(chave) or os.environ.get(env, '')).strip()
+        return v if re.match(padrao, v) else ''      # ignora valores digitados errado
+    supa = val('supabaseUrl', 'SUPABASE_URL', r'^https://[a-z0-9-]+\.supabase\.(co|in)/?$').rstrip('/')
+    key = val('supabaseAnonKey', 'SUPABASE_ANON_KEY', r'^(eyJ[\w-]+\.[\w-]+\.[\w-]+|sb_publishable_[\w-]+)$')
+    site = val('siteUrl', 'SITE_URL', r'^https://[\w.-]+\.[a-z]{2,}(/[\w./-]*)?$').rstrip('/')
+    if not (supa and key): supa, key = '', ''
+    return supa, key, site
+
 def config_js(desktop=False):
-    supa = os.environ.get('SUPABASE_URL', '').rstrip('/')
-    cfg = {'supabaseUrl': supa, 'supabaseAnonKey': os.environ.get('SUPABASE_ANON_KEY', ''), 'siteUrl': os.environ.get('SITE_URL', ''), 'desktop': desktop}
+    supa, key, site = publico()
+    cfg = {'supabaseUrl': supa, 'supabaseAnonKey': key, 'siteUrl': site, 'desktop': desktop}
     return supa, cfg, 'window.GABIAO_WEB = true;\nwindow.GABIAO_CONFIG = ' + json.dumps(cfg) + ';\n'
 
 def build_desktop():

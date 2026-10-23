@@ -30,7 +30,7 @@ Sem as contas configuradas, o programa abre direto, sem login (modo de demonstra
 3. Em **Authentication → URL Configuration**: Site URL = `SITE_URL`; Redirect URLs = `SITE_URL/app/` **e** `gabiaocad://auth` (este último é para o programa do Windows receber o login de volta do navegador).
 4. Em **Authentication → Providers**: e-mail já vem ligado. Para "Entrar com Google", ligue o Google e cole o Client ID e o Secret criados no Google Cloud Console (tipo "Aplicativo da Web", URI de redirecionamento mostrada pelo próprio Supabase).
 5. Em supabase.com → **Account → Access Tokens**, crie um token.
-6. No GitHub, **Variables**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_PROJECT_REF` (o código do projeto, que aparece na URL).
+6. Coloque a **Project URL** e a chave **anon public** (ou *publishable*) em `config/publico.json`, no próprio repositório (são dados públicos). O código do projeto é tirado da URL. As variáveis `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_PROJECT_REF` do GitHub continuam funcionando, mas o arquivo tem prioridade.
    **Secrets**: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `ANTHROPIC_API_KEY` (console.anthropic.com, com créditos).
 7. Rode **Actions → Atualizar servidor**. Ele cria as tabelas e publica as funções.
 

@@ -40,7 +40,7 @@ jobs:
         if: steps.ref.outputs.ok == 'true'
         run: |
           set +e
-          supabase db push --yes -p "$SUPABASE_DB_PASSWORD" > saida.txt 2>&1; st=$?
+          supabase db push --linked --yes -p "$SUPABASE_DB_PASSWORD" > saida.txt 2>&1; st=$?
           cat saida.txt
           if [ $st -ne 0 ]; then
             # mostra o erro no resumo da execução (a senha nunca aparece: o GitHub esconde os segredos)

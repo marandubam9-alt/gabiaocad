@@ -100,14 +100,14 @@
     const cod = h.get('error_code') || q.get('error_code'), desc = h.get('error_description') || q.get('error_description');
     if (!cod && !desc) return '';
     try { history.replaceState(null, '', location.pathname); } catch (e) {}
-    if (/otp_expired|expired|invalid/i.test((cod || '') + (desc || ''))) return 'Esse link de acesso expirou ou já foi usado (alguns e-mails, como o Outlook/Hotmail, abrem o link sozinhos para checar vírus). Peça um novo e use o código de 6 dígitos que vem no e-mail.';
+    if (/otp_expired|expired|invalid/i.test((cod || '') + (desc || ''))) return 'Esse link de acesso expirou ou já foi usado (alguns e-mails, como o Outlook/Hotmail, abrem o link sozinhos para checar vírus). Peça um link novo e clique nele uma vez só, ou use o botão Entrar com Google.';
     return 'Não foi possível entrar: ' + (desc || cod).replace(/\+/g, ' ');
   })();
   function loginForm(el, aoEnviar) {
     el.innerHTML = `<button class="btn primary" type="button" data-g="google">Entrar com Google</button>
-      <div class="help" style="text-align:center">ou receba um código de acesso no e-mail</div>
-      <div class="aikeyrow"><div class="inp"><input data-g="email" type="email" placeholder="seu@email.com" autocomplete="email"></div><button class="btn" type="button" data-g="send">Enviar código</button></div>
-      <div class="aikeyrow" data-g="codebox" hidden><div class="inp"><input data-g="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="código do e-mail"></div><button class="btn primary" type="button" data-g="verify">Entrar</button></div>
+      <div class="help" style="text-align:center">ou receba um link de acesso no e-mail</div>
+      <div class="aikeyrow"><div class="inp"><input data-g="email" type="email" placeholder="seu@email.com" autocomplete="email"></div><button class="btn" type="button" data-g="send">Enviar link</button></div>
+      <div class="aikeyrow" data-g="codebox" hidden><div class="inp"><input data-g="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="código (se vier no e-mail)"></div><button class="btn primary" type="button" data-g="verify">Entrar</button></div>
       <p class="help" data-g="msg">${ERRO_LOGIN ? `<b style="color:var(--bad)">${esc(ERRO_LOGIN)}</b>` : 'Estudante: entre com o e-mail da faculdade (.edu.br) para poder assinar o plano Estudante.'}</p>`;
     const volta = DESK ? VOLTA_APP : location.origin + location.pathname;
     const msg = el.querySelector('[data-g=msg]'), emailIn = el.querySelector('[data-g=email]'), codeIn = el.querySelector('[data-g=code]');
@@ -125,7 +125,7 @@
       b.disabled = false;
       if (error) { msg.innerHTML = `<b style="color:var(--bad)">${/rate|limit|seconds/i.test(error.message) ? 'Muitos pedidos seguidos. Espere 1 minuto e tente de novo.' : 'Não foi possível enviar: ' + esc(error.message)}</b>`; return; }
       el.querySelector('[data-g=codebox]').hidden = false; b.textContent = 'Reenviar'; codeIn.focus();
-      msg.innerHTML = `<b>Enviamos um código para ${esc(email)}.</b> Digite o código acima e clique em Entrar (veja também a caixa de spam ou lixo eletrônico).`;
+      msg.innerHTML = `<b>Enviamos um e-mail para ${esc(email)}.</b> Abra e clique no link para entrar${DESK ? '' : ' neste mesmo navegador'}. Se o e-mail trouxer um código, digite acima. Veja também a caixa de spam ou lixo eletrônico.`;
       aoEnviar && aoEnviar();
     };
     const verificar = async () => {

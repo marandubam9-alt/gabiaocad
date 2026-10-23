@@ -1,6 +1,6 @@
 {
   "_leia": "Dados PÚBLICOS do site (podem ficar no repositório: a chave anon/publishable vai no site de qualquer jeito). Nunca coloque aqui senha, token sbp_, service_role ou chave secreta.",
   "siteUrl": "https://marandubam9-alt.github.io/gabiaocad",
-  "supabaseUrl": "",
+  "supabaseUrl": "https://zbmnxdbrhlemoiyelfjk.supabase.co",
   "supabaseAnonKey": ""
 }

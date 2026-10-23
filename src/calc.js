@@ -600,4 +600,105 @@ function fullCalc(st) {
   return { ext, seco, cases, gov, internas, q, scour, glob, globSeco, props: propsGabiao(st), geo: geometryGlobal(st) };
 }
 
-if (typeof module !== 'undefined') module.exports = { optimizeDesign, designChecks, wholeBoxProfiles, globalStability, buildCases, scourCheck, layerBoxes, splitWidth, analyze, quantities, autoLayers, fullCalc, coulombKa, rects, ADESAO };
+/* ===== Muro na foto: câmera a partir de 4 pontos marcados na imagem =====
+   Coordenadas 3D (as mesmas da aba 3D): x ao longo do muro (centro em 0), y para cima
+   (0 = fundo da base), z = −(distância horizontal para o aterro). A "face" usada para
+   encaixar é o plano que passa pelo pé do muro no terreno da frente (cota D) e pela
+   aresta da frente do topo. Imagem: pixels, x para a direita, y para baixo. */
+function fotoAnchor(s) {
+  const R = rects(s);
+  let fD = rot(s, R[0].x0, R[0].y0).x;
+  R.forEach(r => { const A = rot(s, r.x0, r.y0), B = rot(s, r.x0, r.y1); if (s.D >= A.y && s.D <= B.y && B.y > A.y) fD = A.x + (B.x - A.x) * (s.D - A.y) / (B.y - A.y); });
+  const rt = R[R.length - 1], tf = rot(s, rt.x0, rt.y1);
+  const v1 = tf.y - s.D, v2 = -(tf.x - fD), Hs = Math.hypot(v1, v2);
+  return { O: [0, s.D, -fD], fD, e2: Hs > 1e-6 ? [0, v1 / Hs, v2 / Hs] : [0, 1, 0], Hs, L: s.L };
+}
+/* cantos da face: pé esquerdo, pé direito, topo direito, topo esquerdo (vistos da frente) */
+function fotoCorners(a) {
+  const P = (X, Y) => [a.O[0] + X, a.O[1] + Y * a.e2[1], a.O[2] + Y * a.e2[2]];
+  return [P(-a.L / 2, 0), P(a.L / 2, 0), P(a.L / 2, a.Hs), P(-a.L / 2, a.Hs)];
+}
+function solveLinear(A, b) {
+  const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < n; r++) if (r !== c) { const k = M[r][c] / M[c][c]; for (let j = c; j <= n; j++) M[r][j] -= k * M[c][j]; }
+  }
+  return M.map((r, i) => r[n] / r[i]);
+}
+/* homografia plano (X, Y) -> imagem (u, v) por 4 pares de pontos */
+function homography(src, dst) {
+  const A = [], b = [];
+  src.forEach(([X, Y], i) => { const [u, v] = dst[i]; A.push([X, Y, 1, 0, 0, 0, -u * X, -u * Y]); b.push(u); A.push([0, 0, 0, X, Y, 1, -v * X, -v * Y]); b.push(v); });
+  const h = solveLinear(A, b);
+  return h && h.every(Number.isFinite) ? [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1]] : null;
+}
+/* distância focal (pixels) pela condição de eixos ortogonais e de mesma escala; sem
+   perspectiva suficiente (foto de frente) não dá para medir e usa uma lente típica de celular */
+function focalFromH(H, cx, cy, D) {
+  const r0 = [0, 1, 2].map(j => H[0][j] - cx * H[2][j]), r1 = [0, 1, 2].map(j => H[1][j] - cy * H[2][j]), r2 = H[2];
+  const cand = [], tol = 1e-9 * Math.max(1, Math.abs(r0[0]) + Math.abs(r1[1])) / D;
+  const d1 = r2[0] * r2[1]; if (Math.abs(d1) > tol * tol) cand.push(-(r0[0] * r0[1] + r1[0] * r1[1]) / d1);
+  const d2 = r2[0] ** 2 - r2[1] ** 2; if (Math.abs(d2) > tol * tol) cand.push(-(r0[0] ** 2 + r1[0] ** 2 - r0[1] ** 2 - r1[1] ** 2) / d2);
+  const ok = cand.filter(f2 => f2 > 0).map(Math.sqrt).filter(f => f > 0.4 * D && f < 2.5 * D);
+  return { f: ok.length ? ok.reduce((x, y) => x + y) / ok.length : 0.8 * D, medida: ok.length > 0 };
+}
+const V3m = {
+  sc: (v, k) => v.map(x => x * k), n: v => Math.hypot(v[0], v[1], v[2]),
+  cr: (p, q) => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]],
+  un: v => V3m.sc(v, 1 / V3m.n(v)), sub: (p, q) => p.map((x, i) => x - q[i]), add: (p, q) => p.map((x, i) => x + q[i]),
+  mv: (M, v) => M.map(r => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]),
+  mm: (A, B) => A.map(r => [0, 1, 2].map(j => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j])),
+  tr: A => [0, 1, 2].map(i => [A[0][i], A[1][i], A[2][i]]),
+};
+/* câmera (rotação mundo->câmera Rw, centro C, focal f) que leva os cantos da face aos 4 pontos.
+   Sem lente informada, testa a lente medida pela perspectiva e uma faixa de lentes comuns
+   e fica com a que melhor encaixa os 4 pontos. */
+function cameraFromPoints(s, pts, w, h, fixedF) {
+  const a = fotoAnchor(s);
+  if (!(a.Hs > 0.05) || !(a.L > 0.1) || !pts || pts.length !== 4) return null;
+  const H = homography([[-a.L / 2, 0], [a.L / 2, 0], [a.L / 2, a.Hs], [-a.L / 2, a.Hs]], pts);
+  if (!H) return null;
+  const D = Math.max(w, h), auto = focalFromH(H, w / 2, h / 2, D);
+  if (fixedF > 0) return Object.assign(poseForFocal(a, H, pts, w, h, fixedF), { fAuto: auto.f, fMedida: auto.medida });
+  let best = poseForFocal(a, H, pts, w, h, auto.f);
+  for (let i = 0; i <= 40; i++) {
+    const c = poseForFocal(a, H, pts, w, h, D * 0.4 * Math.pow(2.5 / 0.4, i / 40));
+    if (c.erro < best.erro * 0.8 - 0.002) best = c;          // só troca a lente se encaixar bem melhor
+  }
+  return Object.assign(best, { fAuto: best.f, fMedida: auto.medida });
+}
+function poseForFocal(a, H, pts, w, h, f) {
+  const cx = w / 2, cy = h / 2, { sc, n, cr, un, mm, mv, tr } = V3m;
+  const Ki = j => [(H[0][j] - cx * H[2][j]) / f, (H[1][j] - cy * H[2][j]) / f, H[2][j]];
+  const ka = Ki(0), kb = Ki(1), kc = Ki(2);
+  let lam = (n(ka) + n(kb)) / 2; if (kc[2] < 0) lam = -lam;          // face na frente da câmera
+  const r1 = un(sc(ka, 1 / lam)), r3 = un(cr(r1, un(sc(kb, 1 / lam)))), r2 = cr(r3, r1), t = sc(kc, 1 / lam);
+  const R = [[r1[0], r2[0], r3[0]], [r1[1], r2[1], r3[1]], [r1[2], r2[2], r3[2]]];
+  const e2 = a.e2, e3 = [0, -e2[2], e2[1]], M = [[1, e2[0], e3[0]], [0, e2[1], e3[1]], [0, e2[2], e3[2]]];
+  const Rw = mm(R, tr(M)), C = V3m.sub(a.O, mv(mm(M, tr(R)), t));
+  const cam = { Rw, C, rel: V3m.sub(C, a.O), f, w, h };
+  const diag = Math.hypot(w, h);
+  cam.erro = Math.max(...fotoCorners(a).map((P, i) => { const q = projectPoint(cam, P); return q ? Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]) / diag : 1; }));
+  return cam;
+}
+/* comprimento de muro que melhor combina com os 4 pontos (para avisar quando não bate com o projeto) */
+function fitLength(s, pts, w, h, fixedF) {
+  let best = null;
+  for (let i = 0; i <= 60; i++) {
+    const L = 0.5 * Math.pow(400, i / 60), c = cameraFromPoints(Object.assign({}, s, { L }), pts, w, h, fixedF);
+    if (c && (!best || c.erro < best.erro)) best = { L, erro: c.erro };
+  }
+  return best;
+}
+/* reposiciona a câmera quando o projeto muda: o pé do muro fica no mesmo lugar da foto */
+function cameraAt(cam, s) { const a = fotoAnchor(s); return Object.assign({}, cam, { C: V3m.add(a.O, cam.rel) }); }
+function projectPoint(cam, P) {
+  const pc = V3m.mv(cam.Rw, V3m.sub(P, cam.C));
+  if (pc[2] <= 1e-6) return null;
+  return [cam.f * pc[0] / pc[2] + cam.w / 2, cam.f * pc[1] / pc[2] + cam.h / 2, pc[2]];
+}
+
+if (typeof module !== 'undefined') module.exports = { optimizeDesign, designChecks, wholeBoxProfiles, globalStability, buildCases, scourCheck, layerBoxes, splitWidth, analyze, quantities, autoLayers, fullCalc, coulombKa, rects, ADESAO, fotoAnchor, fotoCorners, homography, focalFromH, cameraFromPoints, fitLength, cameraAt, projectPoint, V3m };

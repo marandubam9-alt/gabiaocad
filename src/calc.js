@@ -34,6 +34,7 @@ function coulombKa(phi, delta, beta, alphaB) {
 /* Análise do trecho do muro acima da junta j (j=0: base / fundação).
    wet=true: chuva — aterro saturado e nível d'água atrás do muro (st.water). */
 const GW = 9.81;
+const ADESAO = 2 / 3;   // fração da coesão da fundação usada como adesão na base (ca = 2/3·c)
 /* cond: null = seco; { Yw, Yf, gsat } = água atrás (Yw) e na frente (Yf), em m a partir da base */
 function analyze(st, j, cond) {
   if (cond === undefined) cond = defaultCond(st);
@@ -111,7 +112,7 @@ function analyze(st, j, cond) {
     // componentes vertical e horizontal classificadas separadamente
     [(f.p.x - toe.x) * f.fy, -(f.p.y - toe.y) * f.fx].forEach(m => { if (m > 0) Mo += m; else Mr -= m; });
   });
-  const phib = isBase ? st.found.phi : phiStar, cb = isBase ? st.found.c : 0;
+  const phib = isBase ? st.found.phi : phiStar, cb = isBase ? ADESAO * st.found.c : 0;
   const drv = -(Fx * Math.cos(a) - Fy * Math.sin(a)), Np = -(Fx * Math.sin(a) + Fy * Math.cos(a));
   const N = W + Ev, T = Eh;
   const resist = Math.max(0, Np) * Math.tan(phib * D2R) + cb * B;
@@ -599,4 +600,4 @@ function fullCalc(st) {
   return { ext, seco, cases, gov, internas, q, scour, glob, globSeco, props: propsGabiao(st), geo: geometryGlobal(st) };
 }
 
-if (typeof module !== 'undefined') module.exports = { optimizeDesign, designChecks, wholeBoxProfiles, globalStability, buildCases, scourCheck, layerBoxes, splitWidth, analyze, quantities, autoLayers, fullCalc, coulombKa, rects };
+if (typeof module !== 'undefined') module.exports = { ADESAO, optimizeDesign, designChecks, wholeBoxProfiles, globalStability, buildCases, scourCheck, layerBoxes, splitWidth, analyze, quantities, autoLayers, fullCalc, coulombKa, rects };

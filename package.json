@@ -5,7 +5,7 @@
   "description": "GabiãoCAD — bibliotecas usadas para montar o site e o programa",
   "scripts": {
     "build": "python3 scripts/build.py",
-    "test": "node --experimental-strip-types --no-warnings tests/logic.test.ts"
+    "test": "node tests/calc.test.js && node --experimental-strip-types --no-warnings tests/logic.test.ts"
   },
   "dependencies": {
     "three": "0.128.0",

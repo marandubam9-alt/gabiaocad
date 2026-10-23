@@ -213,6 +213,7 @@ footer a{color:#fff}
   </div>
 </footer>
 <script>document.getElementById('ano').textContent = new Date().getFullYear();</script>
+<script>if (/access_token=|error_code=|error_description=/.test(location.hash) || /[?&](code|error_code)=/.test(location.search)) location.replace('app/' + location.search + location.hash);</script>
 <script>document.querySelectorAll('[data-t]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); const v = document.querySelector('video.tut'); v.currentTime = +a.dataset.t; v.play().catch(() => {}); }));</script>
 </body>
 </html>

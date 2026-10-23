@@ -94,13 +94,23 @@
     const ab = document.getElementById('acctBtn'); if (ab) ab.onclick = accountDialog;
   }
   // formulário de entrada (usado na tela inicial e no diálogo)
+  // erro devolvido pelo Supabase no endereço (ex.: link expirado ou já aberto pelo antivírus do e-mail)
+  const ERRO_LOGIN = (() => {
+    const h = new URLSearchParams(location.hash.slice(1)), q = new URLSearchParams(location.search);
+    const cod = h.get('error_code') || q.get('error_code'), desc = h.get('error_description') || q.get('error_description');
+    if (!cod && !desc) return '';
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    if (/otp_expired|expired|invalid/i.test((cod || '') + (desc || ''))) return 'Esse link de acesso expirou ou já foi usado (alguns e-mails, como o Outlook/Hotmail, abrem o link sozinhos para checar vírus). Peça um novo e use o código de 6 dígitos que vem no e-mail.';
+    return 'Não foi possível entrar: ' + (desc || cod).replace(/\+/g, ' ');
+  })();
   function loginForm(el, aoEnviar) {
     el.innerHTML = `<button class="btn primary" type="button" data-g="google">Entrar com Google</button>
-      <div class="help" style="text-align:center">ou receba um link de acesso no e-mail</div>
-      <div class="aikeyrow"><div class="inp"><input data-g="email" type="email" placeholder="seu@email.com" autocomplete="email"></div><button class="btn" type="button" data-g="send">Enviar link</button></div>
-      <p class="help" data-g="msg">Estudante: entre com o e-mail da faculdade (.edu.br) para poder assinar o plano Estudante.</p>`;
-    const volta = DESK ? VOLTA_APP : location.origin + location.pathname + location.search;
-    const msg = el.querySelector('[data-g=msg]');
+      <div class="help" style="text-align:center">ou receba um código de acesso no e-mail</div>
+      <div class="aikeyrow"><div class="inp"><input data-g="email" type="email" placeholder="seu@email.com" autocomplete="email"></div><button class="btn" type="button" data-g="send">Enviar código</button></div>
+      <div class="aikeyrow" data-g="codebox" hidden><div class="inp"><input data-g="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="código do e-mail"></div><button class="btn primary" type="button" data-g="verify">Entrar</button></div>
+      <p class="help" data-g="msg">${ERRO_LOGIN ? `<b style="color:var(--bad)">${esc(ERRO_LOGIN)}</b>` : 'Estudante: entre com o e-mail da faculdade (.edu.br) para poder assinar o plano Estudante.'}</p>`;
+    const volta = DESK ? VOLTA_APP : location.origin + location.pathname;
+    const msg = el.querySelector('[data-g=msg]'), emailIn = el.querySelector('[data-g=email]'), codeIn = el.querySelector('[data-g=code]');
     el.querySelector('[data-g=google]').onclick = async () => {
       if (!DESK) { await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta } }); return; }
       const { data, error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, skipBrowserRedirect: true } });
@@ -108,16 +118,33 @@
       D.openExternal(data.url);
       msg.innerHTML = '<b>Continue no navegador.</b> Depois de entrar, o navegador pergunta se pode abrir o GabiãoCAD: clique em <b>Abrir</b>.';
     };
-    el.querySelector('[data-g=send]').onclick = async () => {
-      const email = el.querySelector('[data-g=email]').value.trim(); if (!/^\S+@\S+\.\S+$/.test(email)) { toast('Digite um e-mail válido.'); return; }
+    const enviar = async () => {
+      const email = emailIn.value.trim(); if (!/^\S+@\S+\.\S+$/.test(email)) { toast('Digite um e-mail válido.'); return; }
+      const b = el.querySelector('[data-g=send]'); b.disabled = true;
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: volta } });
-      if (error) toast('Não foi possível enviar: ' + error.message);
-      else { msg.innerHTML = `<b>Link enviado para ${esc(email)}.</b> Abra seu e-mail ${DESK ? 'neste computador ' : ''}e clique no link para entrar (veja também a caixa de spam).${DESK ? ' O navegador vai perguntar se pode abrir o GabiãoCAD: clique em <b>Abrir</b>.' : ''}`; aoEnviar && aoEnviar(); }
+      b.disabled = false;
+      if (error) { msg.innerHTML = `<b style="color:var(--bad)">${/rate|limit|seconds/i.test(error.message) ? 'Muitos pedidos seguidos. Espere 1 minuto e tente de novo.' : 'Não foi possível enviar: ' + esc(error.message)}</b>`; return; }
+      el.querySelector('[data-g=codebox]').hidden = false; b.textContent = 'Reenviar'; codeIn.focus();
+      msg.innerHTML = `<b>Enviamos um código para ${esc(email)}.</b> Digite o código acima e clique em Entrar (veja também a caixa de spam ou lixo eletrônico).`;
+      aoEnviar && aoEnviar();
     };
+    const verificar = async () => {
+      const token = codeIn.value.replace(/\D/g, ''), email = emailIn.value.trim();
+      if (token.length < 6) { toast('Digite o código que chegou no e-mail.'); return; }
+      const b = el.querySelector('[data-g=verify]'); b.disabled = true; b.textContent = 'Entrando…';
+      const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+      b.disabled = false; b.textContent = 'Entrar';
+      if (error) { msg.innerHTML = `<b style="color:var(--bad)">${/expired|invalid/i.test(error.message) ? 'Código errado ou vencido. Confira ou clique em Reenviar.' : esc(error.message)}</b>`; return; }
+      toast('Você entrou na sua conta.'); loadPlan();
+    };
+    el.querySelector('[data-g=send]').onclick = enviar;
+    el.querySelector('[data-g=verify]').onclick = verificar;
+    emailIn.addEventListener('keydown', e => { if (e.key === 'Enter') enviar(); });
+    codeIn.addEventListener('keydown', e => { if (e.key === 'Enter') verificar(); });
   }
   function loginDialog(motivo) {
     const d = dialog('Entrar', `${typeof motivo === 'string' ? `<p class="help">${esc(motivo)}</p>` : ''}<div class="login" style="display:grid;gap:10px"></div>`);
-    loginForm(d.querySelector('.login'), () => setTimeout(() => d.close(), 2500));
+    loginForm(d.querySelector('.login'));
   }
   // programa instalado: o navegador devolve gabiaocad://auth?code=... depois do login
   async function retornoLogin(url) {

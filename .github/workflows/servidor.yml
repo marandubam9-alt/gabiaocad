@@ -2,7 +2,7 @@ name: Atualizar servidor (Supabase)
 on:
   push:
     branches: [main]
-    paths: ['supabase/**', 'config/publico.json', '.github/workflows/servidor.yml']
+    paths: ['supabase/**', 'config/publico.json', '.github/workflows/servidor.yml', 'scripts/config_login.py']
   workflow_dispatch:
 jobs:
   deploy:
@@ -48,6 +48,9 @@ jobs:
             echo "::error title=Banco de dados::$(tail -c 1500 saida.txt | tr '\n' ' ') | A senha salva no GitHub tem ${#pw} caracteres$esp"
             exit $st
           fi
+      - name: Login (endereços e e-mail com código)
+        if: steps.ref.outputs.ok == 'true'
+        run: python3 scripts/config_login.py ${{ steps.ref.outputs.ref }}
       - name: Chaves secretas das funções
         if: steps.ref.outputs.ok == 'true'
         env:

@@ -1204,7 +1204,7 @@ Responda SOMENTE com um objeto JSON neste formato:
  "conferir_no_local": ["o que medir ou verificar antes de executar"],
  "posicao_na_foto": {"foto": índice da foto onde o muro aparece melhor (0 = primeira), "base_esq": [x, y], "base_dir": [x, y], "topo_esq": [x, y], "topo_dir": [x, y]} ou null
 }
-Em "posicao_na_foto", dê os 4 cantos da FACE DO MURO como ele ficaria construído nessa foto (pé e topo, lado esquerdo e direito), em coordenadas de 0 a 1 a partir do canto superior esquerdo da imagem (x para a direita, y para baixo). Use o pé do barranco ou a margem como base e a altura que você sugeriu, respeitando a perspectiva.`;
+Em "posicao_na_foto", marque onde o muro ficaria nessa foto, em coordenadas de 0 a 1 a partir do canto superior esquerdo da imagem (x para a direita, y para baixo): "base_esq" e "base_dir" são as duas pontas do pé do muro no chão (pé do barranco ou margem); "topo_esq" e "topo_dir" ficam na vertical acima de cada ponta, na altura que você sugeriu, respeitando a perspectiva.`;
 }
 
 function aiStatus(html) { $('#aiStatus').innerHTML = html; }
@@ -1269,6 +1269,9 @@ function montDraw(cv, exportando) {
   if (MONT.mode === 'antes') { montTag(g, W, H, 'ANTES'); return; }
   const cams = montCamadas(), Ht = cams.reduce((a, c) => a + c.h, 0) || 1, Lm = Math.max(1, st.L), bl = st.boxLen || 2;
   const px = q => [q[0] * W, q[1] * H], tex = montTexture(), R = rng(11);
+  let feito3D = false;
+  try { feito3D = !!(window.THREE && mont3D(g, W, H, cams, Ht, Lm, bl)); } catch (e) { console.warn('simulação 3D', e); }
+  if (!feito3D) {
   // sombra no pé do muro
   const b0 = px(montP(0, 0)), b1 = px(montP(1, 0)), sh = Math.hypot(b1[0] - b0[0], b1[1] - b0[1]) * 0.03;
   g.save(); g.beginPath(); g.moveTo(b0[0], b0[1]); g.lineTo(b1[0], b1[1]); g.lineTo(b1[0], b1[1] + sh); g.lineTo(b0[0], b0[1] + sh); g.closePath();
@@ -1306,7 +1309,8 @@ function montDraw(cv, exportando) {
       g.fillStyle = gt; g.fill();
     }
   });
-  montCotas(g, W, H, Ht, Lm);
+  }
+  montCotas(g, W, H, feito3D ? Ht - Math.min(Math.max(0, st.D || 0), Ht - 0.5) : Ht, Lm);
   montTag(g, W, H, exportando ? null : 'DEPOIS');
   if (MONT.mode === 'comparar') {
     const xs = W * MONT.split;
@@ -1319,6 +1323,169 @@ function montDraw(cv, exportando) {
     const [x, yy] = px(q); g.beginPath(); g.arc(x, yy, Math.max(9, W / 110), 0, Math.PI * 2);
     g.fillStyle = 'rgba(169,97,27,.92)'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
   });
+}
+/* ---------- simulação 3D: modelo do muro renderizado na perspectiva da foto ---------- */
+const M3 = { r: null, key: '', scene: null, wall: null, mats: null, s: 1 };
+function m3Textures() {
+  if (M3.mats) return M3.mats;
+  const W = 1024, H = 512, R = rng(21);              // 2 m × 1 m de caixa, 512 px por metro
+  const cor = document.createElement('canvas'), alt = document.createElement('canvas'); cor.width = alt.width = W; cor.height = alt.height = H;
+  const g = cor.getContext('2d'), b = alt.getContext('2d');
+  g.fillStyle = '#211e1b'; g.fillRect(0, 0, W, H); b.fillStyle = '#000'; b.fillRect(0, 0, W, H);
+  const tons = [[104, 100, 94], [122, 117, 109], [88, 85, 80], [138, 131, 120], [76, 73, 69], [116, 105, 90], [150, 143, 132], [97, 90, 78], [130, 121, 104]];
+  const pedras = [];
+  for (let k = 0; k < 330; k++) pedras.push({ x: R() * W, y: R() * H, r: 26 + R() * 46, a: R() * Math.PI, e: 0.55 + R() * 0.4, c: tons[Math.floor(R() * tons.length)], d: (R() - 0.5) * 26, n: 8 + Math.floor(R() * 5), j: Array.from({ length: 13 }, () => 0.78 + R() * 0.32) });
+  pedras.sort((p, q) => p.r - q.r);
+  const forma = (ctx, p, f, dx, dy) => { ctx.beginPath(); for (let t = 0; t < p.n; t++) { const an = p.a + t / p.n * Math.PI * 2, m = p.j[t] * f; ctx.lineTo(p.x + dx + Math.cos(an) * p.r * m, p.y + dy + Math.sin(an) * p.r * p.e * m); } ctx.closePath(); };
+  for (const off of [[-W, 0], [W, 0], [0, -H], [0, H], [0, 0]]) for (const p of pedras) {           // repete nas bordas (textura contínua)
+    const [cr, cg, cb] = p.c, d = p.d;
+    g.fillStyle = 'rgba(0,0,0,.30)'; forma(g, p, 1.12, off[0] + 3, off[1] + 6); g.fill(); g.fillStyle = 'rgba(0,0,0,.35)'; forma(g, p, 1.05, off[0] + 2, off[1] + 3); g.fill();
+    const gr = g.createRadialGradient(p.x + off[0] - p.r * 0.3, p.y + off[1] - p.r * 0.35, 2, p.x + off[0], p.y + off[1], p.r * 1.05);
+    gr.addColorStop(0, `rgb(${cr + d + 34},${cg + d + 34},${cb + d + 32})`); gr.addColorStop(0.65, `rgb(${cr + d},${cg + d},${cb + d})`); gr.addColorStop(1, `rgb(${cr + d - 42},${cg + d - 42},${cb + d - 40})`);
+    g.fillStyle = gr; forma(g, p, 1, off[0], off[1]); g.fill();
+    const hb = b.createRadialGradient(p.x + off[0], p.y + off[1], 1, p.x + off[0], p.y + off[1], p.r);
+    hb.addColorStop(0, '#d8d8d8'); hb.addColorStop(0.7, '#9a9a9a'); hb.addColorStop(1, '#303030');
+    b.fillStyle = hb; forma(b, p, 1, off[0], off[1]); b.fill();
+  }
+  // granulado da rocha
+  const img = g.getImageData(0, 0, W, H), px = img.data;
+  for (let k = 0; k < px.length; k += 4) { const n = (R() - 0.5) * 22; px[k] += n; px[k + 1] += n; px[k + 2] += n; }
+  g.putImageData(img, 0, 0);
+  // tela hexagonal de dupla torção (malha 8 × 10 cm): fios com sombra e brilho
+  const cw = 0.08 * 512, ch = 0.10 * 512;
+  const tela = (ctx, cor1, lw, dx, dy) => {
+    ctx.strokeStyle = cor1; ctx.lineWidth = lw; ctx.lineCap = 'round';
+    for (let row = -1; row * ch < H + ch; row++) for (let col = -1; col * cw < W + cw; col++) {
+      const x = col * cw + (row % 2 ? cw / 2 : 0) + dx, y = row * ch + dy;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cw / 2, y + ch * 0.35); ctx.lineTo(x + cw / 2, y + ch * 0.65); ctx.lineTo(x, y + ch); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + cw / 2, y + ch * 0.35); ctx.lineTo(x + cw, y); ctx.stroke();
+    }
+  };
+  tela(g, 'rgba(0,0,0,.45)', 4.5, 2, 3); tela(g, '#8f989d', 3.2, 0, 0); tela(g, 'rgba(235,240,243,.85)', 1.2, -0.6, -0.6);
+  tela(b, '#ffffff', 3.4, 0, 0);
+  const mk = c => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; };
+  const map = mk(cor); map.encoding = THREE.sRGBEncoding;
+  M3.mats = { pedra: new THREE.MeshStandardMaterial({ map, bumpMap: mk(alt), bumpScale: 0.06, roughness: 0.95, metalness: 0.05, side: THREE.DoubleSide }),
+    aresta: new THREE.LineBasicMaterial({ color: 0x6f777c, transparent: true, opacity: 0.8 }) };
+  return M3.mats;
+}
+// UV de cada face proporcional ao tamanho real da caixa (a textura vale 2 m × 1 m)
+function m3Caixa(w, h, d, R) {
+  const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, ox = R() * 4, oy = R() * 4;
+  const esc = [[d / 2, h], [d / 2, h], [w / 2, d], [w / 2, d], [w / 2, h], [w / 2, h]];   // +x −x +y −y +z −z
+  for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) { const i = f * 4 + v; uv.setXY(i, uv.getX(i) * esc[f][0] + ox, uv.getY(i) * esc[f][1] + oy); }
+  return geo;
+}
+function m3Montar(cams, Lm, bl) {
+  const key = JSON.stringify([cams, Lm, bl, st.batter, st.faceMode, st.stagger]);
+  if (M3.key === key && M3.wall) return M3.wall;
+  if (M3.wall) { M3.wall.parent && M3.wall.parent.remove(M3.wall); M3.wall.traverse(o => o.geometry && o.geometry.dispose()); }
+  const mats = m3Textures(), R = rng(5), wall = new THREE.Group(), b0 = cams[0].b;
+  let y = 0;
+  cams.forEach((c, i) => {
+    const zFront = st.faceMode === 'externa' ? -(b0 - c.b) : 0;                 // degraus na frente: camadas de cima recuam
+    const off = st.stagger && i % 2 === 1 ? bl / 2 : 0, cuts = [0];
+    for (let x = off || bl; x < Lm - 1e-6; x += bl) cuts.push(x);
+    cuts.push(Lm);
+    for (let k = 0; k < cuts.length - 1; k++) {
+      const w = cuts[k + 1] - cuts[k], m = new THREE.Mesh(m3Caixa(w - 0.01, c.h - 0.01, c.b, R), mats.pedra);
+      m.position.set(cuts[k] + w / 2, y + c.h / 2, zFront - c.b / 2); m.castShadow = m.receiveShadow = true; wall.add(m);
+      const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), mats.aresta); e.position.copy(m.position); wall.add(e);
+    }
+    y += c.h;
+  });
+  wall.rotation.x = -(st.batter || 0) * D2R;                                  // inclinação: o topo deita para o aterro
+  M3.wall = wall; M3.key = key; M3.raiz.add(wall);
+  return wall;
+}
+function m3Homografia(src, dst) {           // 4 pares de pontos -> matriz 3×3 (linha a linha), h33 = 1
+  const A = [], bb = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [u, v] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); bb.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); bb.push(v);
+  }
+  for (let c = 0; c < 8; c++) {             // eliminação de Gauss com pivô
+    let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]]; [bb[c], bb[p]] = [bb[p], bb[c]];
+    for (let r = 0; r < 8; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k]; bb[r] -= f * bb[c]; }
+  }
+  const h = bb.map((v, i) => v / A[i][i]);
+  return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+}
+function m3MediaCor(img, x0, y0, x1, y1) {
+  const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d');
+  const W = img.naturalWidth, H = img.naturalHeight;
+  g.drawImage(img, Math.max(0, x0) * W, Math.max(0, y0) * H, Math.max(1, (Math.min(1, x1) - Math.max(0, x0)) * W), Math.max(1, (Math.min(1, y1) - Math.max(0, y0)) * H), 0, 0, 8, 8);
+  const d = g.getImageData(0, 0, 8, 8).data; let r = 0, gg = 0, b = 0; for (let k = 0; k < d.length; k += 4) { r += d[k]; gg += d[k + 1]; b += d[k + 2]; }
+  return [r / 64, gg / 64, b / 64];
+}
+function mont3D(g, W, H, cams, Ht, Lm, bl) {
+  if (!M3.r) {
+    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.setClearColor(0x000000, 0);
+    M3.r = r; M3.scene = new THREE.Scene(); M3.raiz = new THREE.Group(); M3.scene.add(M3.raiz);
+    M3.hemi = new THREE.HemisphereLight(0xffffff, 0x777777, 0.9); M3.scene.add(M3.hemi);
+    M3.sol = new THREE.DirectionalLight(0xffffff, 1.6); M3.sol.castShadow = true; M3.sol.shadow.mapSize.set(2048, 2048); M3.sol.shadow.bias = -0.0008;
+    M3.raiz.add(M3.sol); M3.raiz.add(M3.sol.target);
+    M3.chao = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.42 }));
+    M3.chao.rotation.x = -Math.PI / 2; M3.chao.receiveShadow = true; M3.raiz.add(M3.chao);
+    M3.cam = new THREE.PerspectiveCamera(50, 1, 0.05, 2000); M3.cam.matrixAutoUpdate = false;
+    M3.terra = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide }));
+    M3.terra.rotation.x = -Math.PI / 2; M3.terra.renderOrder = -1; M3.raiz.add(M3.terra);
+  }
+  const r = M3.r, wall = m3Montar(cams, Lm, bl);
+  if (r.domElement.width !== W || r.domElement.height !== H) r.setSize(W, H, false);
+  // os 4 pontos marcam a base do muro e a altura dele (plano vertical na frente da base);
+  // degraus e inclinação ficam para trás desse plano, como no muro de verdade
+  const D = Math.min(Math.max(0, st.D || 0), Ht - 0.5), raiz = M3.raiz; raiz.scale.z = 1;   // abaixo de D o muro fica enterrado
+  // homografia do plano da face (metros) para a imagem (pixels) e câmera equivalente
+  const P = MONT.pts.map(q => [q[0] * W, q[1] * H]), cx = W / 2, cy = H / 2;
+  const Hm = m3Homografia([[0, D], [Lm, D], [0, Ht], [Lm, Ht]], [P[0], P[1], P[2], P[3]]);
+  const h = [[Hm[0] - cx * Hm[6], Hm[1] - cx * Hm[7], Hm[2] - cx * Hm[8]], [Hm[3] - cy * Hm[6], Hm[4] - cy * Hm[7], Hm[5] - cy * Hm[8]], [Hm[6], Hm[7], Hm[8]]];
+  const col = j => [h[0][j], h[1][j], h[2][j]];
+  const [h1, h2] = [col(0), col(1)], cands = [];
+  const f1 = -(h1[0] * h2[0] + h1[1] * h2[1]) / (h1[2] * h2[2]), f2 = -(h1[0] ** 2 + h1[1] ** 2 - h2[0] ** 2 - h2[1] ** 2) / (h1[2] ** 2 - h2[2] ** 2);
+  [f1, f2].forEach(v => { if (Number.isFinite(v) && v > 0) { const f = Math.sqrt(v); if (f > 0.45 * Math.max(W, H) && f < 4 * Math.max(W, H)) cands.push(f); } });
+  const f = cands.length ? cands.reduce((s, v) => s + v, 0) / cands.length : 0.8 * Math.max(W, H);
+  // [r1 r2 t] = K⁻¹ H (y da imagem para baixo; v do plano para cima)
+  const kinv = v => [v[0] / f, -v[1] / f, -v[2]];
+  let r1 = kinv(col(0)), r2 = kinv(col(1)), t = kinv(col(2));
+  const nrm = v => Math.hypot(...v), lam = 2 / (nrm(r1) + nrm(r2)) * (t[2] < 0 ? 1 : -1);  // câmera olha para −z (padrão do three.js)
+  r1 = r1.map(v => v * lam); r2 = r2.map(v => v * lam); t = t.map(v => v * lam);
+  const n1 = nrm(r1), u1 = r1.map(v => v / n1), dp = u1[0] * r2[0] + u1[1] * r2[1] + u1[2] * r2[2];
+  let u2 = r2.map((v, i) => v - dp * u1[i]); const n2 = nrm(u2); u2 = u2.map(v => v / n2);
+  const u3 = [u1[1] * u2[2] - u1[2] * u2[1], u1[2] * u2[0] - u1[0] * u2[2], u1[0] * u2[1] - u1[1] * u2[0]];
+  const V = new THREE.Matrix4().set(u1[0], u2[0], u3[0], t[0], u1[1], u2[1], u3[1], t[1], u1[2], u2[2], u3[2], t[2], 0, 0, 0, 1);
+  const cam = M3.cam; cam.matrixWorldInverse.copy(V); cam.matrixWorld.copy(V).invert();
+  const C = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld); if (C.z < 0) raiz.scale.z = -1;   // pontos espelhados: muro de frente para a câmera
+  cam.fov = 2 * Math.atan(H / 2 / f) / D2R; cam.aspect = W / H; cam.updateProjectionMatrix();
+  // corrige o pequeno resto para os 4 cantos caírem exatamente nos pontos marcados
+  const ndc = (x, y) => { const v = new THREE.Vector3(x, y, 0).applyMatrix4(cam.matrixWorldInverse).applyMatrix4(cam.projectionMatrix); return [v.x, v.y]; };
+  const src = [ndc(0, D), ndc(Lm, D), ndc(0, Ht), ndc(Lm, Ht)], dst = P.map(([x, y]) => [2 * x / W - 1, 1 - 2 * y / H]);
+  if (src.every(p => p.every(Number.isFinite))) {
+    const G = m3Homografia(src, dst);
+    const M = new THREE.Matrix4().set(G[0], G[1], 0, G[2], G[3], G[4], 0, G[5], 0, 0, 0.25, 0, G[6], G[7], 0, G[8]);   // z encolhido: a correção não corta o muro no plano de recorte
+    cam.projectionMatrix.premultiply(M);
+  }
+  // luz parecida com a da foto: cor do céu e do chão, sol do alto à esquerda
+  const ceu = m3MediaCor(MONT.img, 0, 0, 1, 0.25), chao = m3MediaCor(MONT.img, 0, Math.max(...MONT.pts.map(q => q[1])), 1, 1);
+  const lum = c => (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255, foto = lum(m3MediaCor(MONT.img, 0, 0, 1, 1));
+  M3.hemi.color.setRGB(...ceu.map(v => Math.min(1, v / 255 * 1.15))); M3.hemi.groundColor.setRGB(...chao.map(v => v / 255));
+  M3.hemi.intensity = 0.35 + foto * 0.45; M3.sol.intensity = 0.55 + foto * 1.15;
+  M3.sol.position.set(-Lm * 0.3, Ht * 4 + 6, Lm * 0.6 + 8); M3.sol.target.position.set(Lm / 2, 0, 0);
+  const sc = M3.sol.shadow.camera, ext = Math.max(Lm, Ht) * 0.9 + 4; sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 0.5; sc.far = Lm * 4 + 60; sc.updateProjectionMatrix();
+  const prof = Ht * 4 + 12; M3.chao.scale.set(Lm * 3 + 20, prof, 1); M3.chao.position.set(Lm / 2, D + 0.003, prof / 2);   // só na frente do muro
+  M3.terra.scale.set(Lm * 3 + 20, prof, 1); M3.terra.position.set(Lm / 2, D, prof / 2 + 0.002);                        // esconde a parte enterrada
+  r.toneMappingExposure = 0.7 + foto * 0.4;
+  r.render(M3.scene, cam);
+  // compõe sobre a foto: sombra de contato no pé, depois o muro com leve desfoque
+  const b0p = [MONT.pts[0][0] * W, MONT.pts[0][1] * H], b1p = [MONT.pts[1][0] * W, MONT.pts[1][1] * H], sh = Math.hypot(b1p[0] - b0p[0], b1p[1] - b0p[1]) * 0.035;
+  g.save(); g.filter = `blur(${Math.max(4, W / 220)}px)`; g.fillStyle = 'rgba(0,0,0,.45)';
+  g.beginPath(); g.moveTo(b0p[0] - sh * 0.3, b0p[1] - sh * 0.2); g.lineTo(b1p[0] + sh * 0.3, b1p[1] - sh * 0.2); g.lineTo(b1p[0] + sh, b1p[1] + sh * 0.8); g.lineTo(b0p[0] - sh, b0p[1] + sh * 0.8); g.closePath(); g.fill(); g.restore();
+  g.save(); g.filter = `blur(${Math.max(0.3, W / 3200)}px)`; g.drawImage(r.domElement, 0, 0, W, H); g.restore();
+  return true;
 }
 function montTexto(g, txt, x, y, size, alinhar) {
   g.font = `600 ${size}px "IBM Plex Sans", system-ui, sans-serif`; g.textAlign = alinhar || 'center'; g.textBaseline = 'middle';
@@ -1362,7 +1529,7 @@ function montSetup(r) {
     const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
     const cv = $('#montCv'); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
     MONT.img = img; MONT.cv = cv; MONT.on = true; montRefresh(); montModeUI();
-    if (!pts) $('#montHint').textContent = 'Arraste os 4 pontos laranja para os cantos onde o muro vai ficar (pé e topo, dos dois lados).';
+    if (!pts) $('#montHint').textContent = 'Arraste os 4 pontos laranja: os 2 de baixo nas pontas do pé do muro e os 2 de cima na altura do muro, acima de cada ponta.';
   };
   img.src = url;
   const cv = $('#montCv');
@@ -1377,7 +1544,14 @@ function montSetup(r) {
   };
   cv.onpointermove = e => {
     if (MONT.drag < 0) return; const p = pos01(e);
-    if (MONT.drag === 9) MONT.split = Math.min(1, Math.max(0, p[0])); else MONT.pts[MONT.drag] = [Math.min(1.1, Math.max(-0.1, p[0])), Math.min(1.1, Math.max(-0.1, p[1]))];
+    if (MONT.drag === 9) MONT.split = Math.min(1, Math.max(0, p[0]));
+    else {
+      let [x, y] = [Math.min(1.1, Math.max(-0.1, p[0])), Math.min(1.1, Math.max(-0.1, p[1]))];
+      const k = MONT.drag, par = MONT.pts[k ^ 2];                                    // 0↔2 e 1↔3: base e topo do mesmo lado
+      if (k >= 2) { x = Math.min(par[0] + 0.08, Math.max(par[0] - 0.08, x)); y = Math.min(y, par[1] - 0.03); }
+      else { y = Math.max(y, par[1] + 0.03); MONT.pts[k + 2] = [par[0] + (x - MONT.pts[k][0]), par[1]]; }   // mover a base leva o topo junto
+      MONT.pts[k] = [x, y];
+    }
     montRefresh();
   };
   cv.onpointerup = () => { MONT.drag = -1; };
@@ -1394,7 +1568,7 @@ function montModeUI() {
   document.querySelectorAll('#montBox [data-mm]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mm === MONT.mode));
   const e = $('#montEdit'); if (e) { e.setAttribute('aria-pressed', MONT.edit); e.textContent = MONT.edit ? 'Concluir ajuste' : 'Ajustar posição'; }
   const h = $('#montHint'); if (h && MONT.mode === 'comparar' && !MONT.edit) h.textContent = 'Arraste sobre a imagem para comparar antes e depois.';
-  else if (h && MONT.edit) h.textContent = 'Arraste os 4 pontos laranja para os cantos onde o muro vai ficar (pé e topo, dos dois lados).';
+  else if (h && MONT.edit) h.textContent = 'Arraste os 4 pontos laranja: os 2 de baixo nas pontas do pé do muro e os 2 de cima na altura do muro, acima de cada ponta.';
   else if (h) h.textContent = 'A simulação usa as camadas, o comprimento e as caixas do projeto. Use "Ajustar posição" se o muro não estiver no lugar certo.';
 }
 

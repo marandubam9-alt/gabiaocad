@@ -7,5 +7,7 @@ verify_jwt = true
 verify_jwt = true
 [functions.cancelar]
 verify_jwt = true
+[functions.realista]
+verify_jwt = true
 [functions.mp-webhook]
 verify_jwt = false   # o Mercado Pago não envia login; a função confere a assinatura do aviso

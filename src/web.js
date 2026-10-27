@@ -407,6 +407,15 @@
     }
   };
 
+  /* ---------- foto realista (IA de imagem no servidor) ---------- */
+  if (ON) window.gerarRealista = async (dados) => {
+    if (!PLAN.logged) { loginDialog('Entre na sua conta para gerar a foto realista.'); throw { mensagem: 'Entre na sua conta primeiro.' }; }
+    const r = await callFn('realista', dados);
+    if (r.imagem) return r;
+    if (r.erro === 'limite' || r.erro === 'teste_fim') { setTimeout(() => plansDialog(r.mensagem), 0); if (r.erro === 'teste_fim') setTimeout(loadPlan, 0); }
+    throw { mensagem: r.mensagem || 'Não foi possível gerar a foto agora. Tente de novo.' };
+  };
+
   /* ---------- projetos na nuvem ---------- */
   async function cloudSave() {
     if (!PLAN.logged) { loginDialog('Entre para salvar projetos na nuvem.'); return; }

@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import assert from 'node:assert/strict';
-import { infoPlano, emailEstudante, corpoAssinatura, lerReferencia, atualizacaoPerfil, assinaturaValida } from '../supabase/functions/_shared/logic.ts';
+import { aspectoMaisProximo, promptRealista, infoPlano, emailEstudante, corpoAssinatura, lerReferencia, atualizacaoPerfil, assinaturaValida } from '../supabase/functions/_shared/logic.ts';
 
 const agora = new Date('2026-10-22T12:00:00Z');
 assert.equal(infoPlano(null).premium, false); assert.equal(infoPlano(null).estado, 'expirado');
@@ -33,4 +33,7 @@ const v1 = createHmac('sha256', segredo).update(`id:${dataId.toLowerCase()};requ
 assert.equal(await assinaturaValida(`ts=${ts},v1=${v1}`, reqId, dataId, segredo), true);
 assert.equal(await assinaturaValida(`ts=${ts},v1=${v1}`, reqId, 'OUTRO', segredo), false);
 assert.equal(await assinaturaValida(null, reqId, dataId, segredo), false);
+assert.equal(tst.imagens, 2); assert.equal(exp.imagens, 0); assert.equal(pAtivo.imagens, 60);
+assert.equal(aspectoMaisProximo(4000, 3000), '4:3'); assert.equal(aspectoMaisProximo(1080, 1920), '9:16'); assert.equal(aspectoMaisProximo(1600, 1067), '3:2');
+assert.ok(promptRealista('L = 20 m').includes('L = 20 m'));
 console.log('logic: todos os testes passaram');

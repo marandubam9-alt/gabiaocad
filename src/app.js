@@ -933,14 +933,14 @@ async function exportPdf() {
   doc.addImage(vista.canvas.toDataURL('image/jpeg', 0.9), 'JPEG', ML, y, vw, vh); y += vh + 6;
   // simulação sobre a foto do local (quando houve análise de foto)
   if (MONT.on && MONT.img && MONT.cv) {
-    const ed = MONT.edit, md = MONT.mode; MONT.edit = false; MONT.mode = 'depois';
+    const ed = MONT.edit, md = MONT.mode, real = !!MONT.real; MONT.edit = false; MONT.mode = real ? 'realista' : 'depois';
     const c2 = document.createElement('canvas'); c2.width = MONT.cv.width; c2.height = MONT.cv.height; montDraw(c2, true);
     MONT.edit = ed; MONT.mode = md;
     let fw = CW, fh = fw * c2.height / c2.width; if (fh > 110) { fh = 110; fw = fh * c2.width / c2.height; }
     heading('Simulação no local', fh + 14);
     doc.addImage(c2.toDataURL('image/jpeg', 0.88), 'JPEG', ML + (CW - fw) / 2, y, fw, fh); y += fh + 3;
     doc.setFont('Plex', 'normal'); doc.setFontSize(7.6); doc.setTextColor(...rgb(C.muted));
-    doc.text('Montagem ilustrativa sobre a foto enviada, com as camadas e o comprimento deste projeto. As proporções são aproximadas.', ML, y + 2); y += 8;
+    doc.text(real ? 'Imagem ilustrativa gerada por inteligência artificial a partir da foto enviada e da simulação 3D deste projeto.' : 'Montagem ilustrativa sobre a foto enviada, com as camadas e o comprimento deste projeto. As proporções são aproximadas.', ML, y + 2); y += 8;
     doc.setTextColor(...rgb(C.ink));
   }
   // quantitativos
@@ -1267,8 +1267,14 @@ function montDraw(cv, exportando) {
   const W = cv.width, H = cv.height, g = cv.getContext('2d');
   g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(img, 0, 0, W, H);
   if (MONT.mode === 'antes') { montTag(g, W, H, 'ANTES'); return; }
+  const px = q => [q[0] * W, q[1] * H];
+  if (MONT.real && exportando !== 'guia' && (MONT.mode === 'realista' || MONT.mode === 'comparar')) {   // foto realista feita pela IA
+    g.drawImage(MONT.real, 0, 0, W, H);
+    montTag(g, W, H, exportando ? null : 'FOTO REALISTA (IA)');
+    montFim(g, W, H, img, exportando, px); return;
+  }
   const cams = montCamadas(), Ht = cams.reduce((a, c) => a + c.h, 0) || 1, Lm = Math.max(1, st.L), bl = st.boxLen || 2;
-  const px = q => [q[0] * W, q[1] * H], tex = montTexture(), R = rng(11);
+  const tex = montTexture(), R = rng(11);
   let feito3D = false;
   try { feito3D = !!(window.THREE && mont3D(g, W, H, cams, Ht, Lm, bl)); } catch (e) { console.warn('simulação 3D', e); }
   if (!feito3D) {
@@ -1310,8 +1316,12 @@ function montDraw(cv, exportando) {
     }
   });
   }
+  if (exportando === 'guia') return;                                           // guia para a IA: só a foto com o muro, sem textos
   montCotas(g, W, H, feito3D ? Ht - Math.min(Math.max(0, st.D || 0), Ht - 0.5) : Ht, Lm);
   montTag(g, W, H, exportando ? null : 'DEPOIS');
+  montFim(g, W, H, img, exportando, px);
+}
+function montFim(g, W, H, img, exportando, px) {
   if (MONT.mode === 'comparar') {
     const xs = W * MONT.split;
     g.save(); g.beginPath(); g.rect(0, 0, xs, H); g.clip(); g.drawImage(img, 0, 0, W, H); montTag(g, W, H, 'ANTES'); g.restore();
@@ -1508,7 +1518,7 @@ function montTag(g, W, H, rot) {
   if (rot) { g.fillStyle = 'rgba(10,16,22,.72)'; const tw = g.measureText ? (g.font = `700 ${s}px system-ui`, g.measureText(rot).width) : 60; g.fillRect(s, s, tw + s * 1.4, s * 1.9); g.fillStyle = '#fff'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(rot, s * 1.7, s * 1.95); }
   montTexto(g, 'Simulação ilustrativa · GabiãoCAD', W - s, H - s * 1.2, s * 0.85, 'right');
 }
-function montRefresh() { if (MONT.cv) montDraw(MONT.cv); const t = $('#montTbl'); if (t) t.innerHTML = montTabela(); }
+function montRefresh() { if (MONT.cv) { montDraw(MONT.cv); if (MONT.real) montModeUI(); } const t = $('#montTbl'); if (t) t.innerHTML = montTabela(); }
 function montTabela() {
   const cams = montCamadas(), Ht = cams.reduce((a, c) => a + c.h, 0);
   const rows = cams.map((c, i) => `<tr><td>C${i + 1}${i === 0 ? ' <small>base</small>' : i === cams.length - 1 ? ' <small>topo</small>' : ''}</td><td class="n">${fmt(c.b, 1)} m</td><td class="n">${fmt(c.h, 1)} m</td><td>${c.cf ? 'Contraforte' : 'Em fila'}</td></tr>`).reverse().join('');
@@ -1522,7 +1532,7 @@ function montSetup(r) {
   const pts = pos && ['base_esq', 'base_dir', 'topo_esq', 'topo_dir'].every(k => ok(pos[k])) ? ['base_esq', 'base_dir', 'topo_esq', 'topo_dir'].map(k => pos[k].map(Number)) : null;
   MONT.pts = pts || [[0.12, 0.84], [0.88, 0.84], [0.12, 0.46], [0.88, 0.46]];
   MONT.camadas = Array.isArray(r.camadas) && r.camadas.length ? r.camadas.map(c => ({ b: +c.b || 1, h: +c.h === 0.5 ? 0.5 : 1, cf: !!c.contraforte })) : null;
-  MONT.useProject = false; MONT.mode = 'depois'; MONT.edit = !pts;
+  MONT.useProject = false; MONT.mode = 'depois'; MONT.edit = !pts; MONT.real = null; MONT.realKey = '';
   const f = AI.files[idx]; if (!f) { box.hidden = true; return; }
   const img = new Image(), url = URL.createObjectURL(f);
   img.onload = () => {
@@ -1557,6 +1567,7 @@ function montSetup(r) {
   cv.onpointerup = () => { MONT.drag = -1; };
   box.querySelectorAll('[data-mm]').forEach(b => b.onclick = () => { MONT.mode = b.dataset.mm; montModeUI(); montRefresh(); });
   $('#montEdit').onclick = () => { MONT.edit = !MONT.edit; montModeUI(); montRefresh(); };
+  const rb = $('#montReal'); rb.hidden = typeof window.gerarRealista !== 'function'; rb.onclick = montGerarReal;
   $('#montSave').onclick = () => {
     const ed = MONT.edit, md = MONT.mode; MONT.edit = false; if (MONT.mode === 'antes') MONT.mode = 'depois';
     const c2 = document.createElement('canvas'); c2.width = MONT.cv.width; c2.height = MONT.cv.height; montDraw(c2, true);
@@ -1564,7 +1575,33 @@ function montSetup(r) {
     c2.toBlob(bl => saveFile(slug() + '-simulacao.png', bl), 'image/png');
   };
 }
+// foto realista: a foto original + a simulação 3D vão como guia para a IA de imagem (no servidor)
+const montChave = () => JSON.stringify([montCamadas(), st.L, st.boxLen, st.batter, st.faceMode, st.D, MONT.pts]);
+async function montGerarReal() {
+  const b = $('#montReal'), msg = $('#montRealMsg'); if (!MONT.img || b.disabled) return;
+  const ed = MONT.edit, md = MONT.mode; MONT.edit = false; MONT.mode = 'depois';
+  const W = MONT.cv.width, H = MONT.cv.height, guia = document.createElement('canvas'); guia.width = W; guia.height = H; montDraw(guia, 'guia');
+  MONT.edit = ed; MONT.mode = md;
+  const foto = document.createElement('canvas'); foto.width = W; foto.height = H; foto.getContext('2d').drawImage(MONT.img, 0, 0, W, H);
+  const b64 = c => c.toDataURL('image/jpeg', 0.9).split(',')[1], cams = montCamadas(), Ht = cams.reduce((a, c) => a + c.h, 0);
+  const D = Math.min(Math.max(0, st.D || 0), Ht - 0.5);
+  const n1 = v => (+v).toFixed(1);
+  const descricao = `length ${n1(st.L)} m, visible height above ground ${n1(Ht - D)} m, ${cams.length} tiers of gabion boxes (bottom to top widths ${cams.map(c => n1(c.b)).join(' / ')} m, each ${cams.map(c => n1(c.h)).join(' / ')} m tall), boxes ${n1(st.boxLen)} m long, ${st.faceMode === 'externa' ? 'steps on the front face' : 'flat front face, steps at the back'}, face inclined ${st.batter || 0} degrees back`;
+  b.disabled = true; b.innerHTML = '<span class="spinner"></span>Gerando… (até 1 minuto)'; msg.hidden = true;
+  try {
+    const r = await window.gerarRealista({ foto: b64(foto), guia: b64(guia), descricao, largura: W, altura: H });
+    const img = new Image();
+    await new Promise((ok, err) => { img.onload = ok; img.onerror = () => err({ mensagem: 'A imagem recebida não abriu.' }); img.src = `data:${r.mime || 'image/png'};base64,${r.imagem}`; });
+    MONT.real = img; MONT.realKey = montChave(); MONT.mode = 'realista'; montModeUI(); montRefresh();
+    msg.hidden = false; msg.textContent = `Foto realista gerada por inteligência artificial a partir da simulação 3D. É uma ilustração: confira as dimensões no projeto.${r.limite ? ` (${r.usados} de ${r.limite} neste mês)` : ''}`;
+  } catch (e) {
+    msg.hidden = false; msg.textContent = (e && e.mensagem) || 'Não foi possível gerar a foto agora. Tente de novo.';
+  } finally { b.disabled = false; b.textContent = MONT.real ? '✨ Gerar de novo' : '✨ Gerar foto realista'; }
+}
 function montModeUI() {
+  const tab = $('#montRealTab'); if (tab) tab.hidden = !MONT.real;
+  const velha = MONT.real && MONT.realKey !== montChave(), m = $('#montRealMsg');
+  if (velha && m) { m.hidden = false; m.textContent = 'O projeto mudou depois da foto realista. Clique em "Gerar de novo" para atualizar a imagem.'; }
   document.querySelectorAll('#montBox [data-mm]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mm === MONT.mode));
   const e = $('#montEdit'); if (e) { e.setAttribute('aria-pressed', MONT.edit); e.textContent = MONT.edit ? 'Concluir ajuste' : 'Ajustar posição'; }
   const h = $('#montHint'); if (h && MONT.mode === 'comparar' && !MONT.edit) h.textContent = 'Arraste sobre a imagem para comparar antes e depois.';
@@ -1593,11 +1630,12 @@ function aiRenderResult(r) {
     </div>
     ${temLocal ? `<figure class="mont" id="montBox">
       <div class="mont-bar">
-        <div class="seg" role="group" aria-label="Visualização"><button type="button" data-mm="antes" aria-pressed="false">Antes</button><button type="button" data-mm="depois" aria-pressed="true">Depois</button><button type="button" data-mm="comparar" aria-pressed="false">Comparar</button></div>
-        <div class="row-btns"><button class="btn" type="button" id="montEdit" aria-pressed="false">Ajustar posição</button><button class="btn" type="button" id="montSave">Baixar imagem</button></div>
+        <div class="seg" role="group" aria-label="Visualização"><button type="button" data-mm="antes" aria-pressed="false">Antes</button><button type="button" data-mm="depois" aria-pressed="true">Depois</button><button type="button" data-mm="comparar" aria-pressed="false">Comparar</button><button type="button" data-mm="realista" aria-pressed="false" id="montRealTab" hidden>Foto realista</button></div>
+        <div class="row-btns"><button class="btn primary" type="button" id="montReal" hidden>✨ Gerar foto realista</button><button class="btn" type="button" id="montEdit" aria-pressed="false">Ajustar posição</button><button class="btn" type="button" id="montSave">Baixar imagem</button></div>
       </div>
       <canvas id="montCv" class="mont-cv" aria-label="Simulação do muro de gabião sobre a foto do local"></canvas>
       <figcaption class="help" id="montHint"></figcaption>
+      <p class="help" id="montRealMsg" hidden></p>
     </figure>` : ''}
     <div class="par-sec"><h4>Diagnóstico</h4><p class="aires-sum">${esc(r.resumo || '')}</p>
       <dl class="par-facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div>

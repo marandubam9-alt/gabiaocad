@@ -34,6 +34,11 @@ Sem as contas configuradas, o programa abre direto, sem login (modo de demonstra
    **Secrets**: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `ANTHROPIC_API_KEY` (console.anthropic.com, com créditos).
 7. Rode **Actions → Atualizar servidor**. Ele cria as tabelas e publica as funções.
 
+### 2b. Foto realista (IA de imagem do Google)
+1. Em **aistudio.google.com → Get API key → Create API key**, crie uma chave (use o mesmo projeto do Google Cloud). Ative o faturamento do projeto: cada imagem custa alguns centavos de dólar.
+2. No GitHub, crie o Secret `GEMINI_API_KEY` com essa chave e rode **Atualizar servidor**.
+3. Limites: 2 imagens no teste grátis e 60 por mês nos planos pagos (`LIMITES` em `supabase/functions/_shared/logic.ts`). O modelo pode ser trocado pela variável de ambiente `GEMINI_MODEL` da função.
+
 ### 3. Mercado Pago (cobrança do Premium)
 1. Em mercadopago.com.br/developers → **Suas integrações → Criar aplicação** (produto: Assinaturas).
 2. Copie o **Access Token de produção** → Secret `MP_ACCESS_TOKEN` no GitHub.

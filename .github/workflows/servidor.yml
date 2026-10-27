@@ -55,11 +55,12 @@ jobs:
         if: steps.ref.outputs.ok == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MP_ACCESS_TOKEN: ${{ secrets.MP_ACCESS_TOKEN }}
           MP_WEBHOOK_SECRET: ${{ secrets.MP_WEBHOOK_SECRET }}
         run: |
           args=("SITE_URL=$(python3 -c "import json;print(json.load(open('config/publico.json'))['siteUrl'])")")
-          for k in ANTHROPIC_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET; do [ -n "${!k}" ] && args+=("$k=${!k}"); done
+          for k in ANTHROPIC_API_KEY GEMINI_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET; do [ -n "${!k}" ] && args+=("$k=${!k}"); done
           supabase secrets set --project-ref ${{ steps.ref.outputs.ref }} "${args[@]}"
       - name: Funções
         if: steps.ref.outputs.ok == 'true'
@@ -69,4 +70,5 @@ jobs:
           supabase functions deploy analisar --project-ref ${{ steps.ref.outputs.ref }}
           supabase functions deploy assinar --project-ref ${{ steps.ref.outputs.ref }}
           supabase functions deploy cancelar --project-ref ${{ steps.ref.outputs.ref }}
+          supabase functions deploy realista --project-ref ${{ steps.ref.outputs.ref }}
           supabase functions deploy mp-webhook --no-verify-jwt --project-ref ${{ steps.ref.outputs.ref }}

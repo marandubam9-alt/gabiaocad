@@ -10,9 +10,9 @@ export type Opcao = keyof typeof PRECOS;
 export const TESTE_SEG = 3 * 3600; // 3 horas de uso; igual a limite_teste_seg() na migração
 
 export const LIMITES = {
-  teste: { analises: 5, modelo: 'claude-haiku-5-5' },      // durante o teste grátis
-  expirado: { analises: 0, modelo: 'claude-haiku-5-5' },   // teste acabou e não assinou
-  premium: { analises: 150, modelo: 'claude-sonnet-5-5' }, // "sem limite" com uso justo
+  teste: { analises: 5, imagens: 2, modelo: 'claude-haiku-5-5' },      // durante o teste grátis
+  expirado: { analises: 0, imagens: 0, modelo: 'claude-haiku-5-5' },   // teste acabou e não assinou
+  premium: { analises: 150, imagens: 60, modelo: 'claude-sonnet-5-5' }, // "sem limite" com uso justo
 };
 
 export interface Perfil { plano: string; premium_ate: string | null; uso_seg?: number | null }
@@ -24,7 +24,7 @@ export function infoPlano(p: Perfil | null, agora = new Date()) {
   const emTeste = !premium && !!p && uso < TESTE_SEG;
   const estado: Estado = premium ? 'premium' : emTeste ? 'teste' : 'expirado';
   const L = LIMITES[estado];
-  return { premium, estado, restanteSeg: emTeste ? TESTE_SEG - uso : 0, plano: premium ? p!.plano : 'gratis', limite: L.analises, modelo: L.modelo, premium_ate: p?.premium_ate ?? null };
+  return { premium, estado, restanteSeg: emTeste ? TESTE_SEG - uso : 0, plano: premium ? p!.plano : 'gratis', limite: L.analises, imagens: L.imagens, modelo: L.modelo, premium_ate: p?.premium_ate ?? null };
 }
 
 export function emailEstudante(email: string) {
@@ -79,4 +79,21 @@ export async function assinaturaValida(xSignature: string | null, xRequestId: st
   if (hex.length !== partes.v1.length) return false;
   let dif = 0; for (let i = 0; i < hex.length; i++) dif |= hex.charCodeAt(i) ^ partes.v1.charCodeAt(i);
   return dif === 0;
+}
+
+// Pedido para a IA de imagem: foto original + simulação 3D como guia -> foto realista
+export const ASPECTOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
+export function aspectoMaisProximo(w: number, h: number) {
+  const r = w / h; let best = '4:3', d = Infinity;
+  for (const a of ASPECTOS) { const [x, y] = a.split(':').map(Number); const e = Math.abs(Math.log(r / (x / y))); if (e < d) { d = e; best = a; } }
+  return best;
+}
+export function promptRealista(descricao: string) {
+  return `You are editing a real construction-site photo for a civil engineering proposal.
+IMAGE 1 is the original photo of the site, exactly as it is today.
+IMAGE 2 is a rough 3D mock-up of a gabion retaining wall placed in that same photo, showing where the wall will be built and its shape.
+Create a single photorealistic photograph of the SAME scene (same camera position, framing, lens, lighting, weather, vegetation and surroundings) with the gabion wall finished and built exactly where and as shown in IMAGE 2: same position in the frame, same length, same height, same number of tiers and the same steps/setbacks.
+Gabion details: boxes of galvanized hexagonal double-twist steel wire mesh (8x10 cm openings, thick selvedge wires on the edges, slightly bulging faces), tightly filled with angular grey quarry stones of 10 to 25 cm, small dark gaps between stones, box joints visible every few meters, natural dirt and a little soil at the base, realistic contact shadow on the ground, light matching the photo.
+Wall data: ${descricao}.
+Keep everything else in the photo unchanged. Do not add text, labels, measurements, watermarks, people, machines or vehicles. Output only the edited photo.`;
 }

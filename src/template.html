@@ -215,6 +215,27 @@ textarea:focus{outline:none;border-color:var(--steel)}
 .aifacts{display:flex;flex-wrap:wrap;gap:6px}
 .aifact{font-size:12px;padding:3px 9px;border-radius:99px;background:var(--panel2);border:1px solid var(--line)}
 .aifact b{font-family:var(--f-mono);font-weight:500}
+.par-head{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;justify-content:space-between;padding-bottom:10px;border-bottom:2px solid var(--ink)}
+.par-kicker{font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.par-title{margin:2px 0;font-family:var(--f-display);font-size:24px;font-weight:700;letter-spacing:.02em}
+.par-conf{font-size:12px;padding:4px 10px}
+.mont{margin:0;display:grid;gap:8px}
+.mont-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.mont-bar .seg{max-width:340px}
+.mont-cv{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--line);background:#0e1620;touch-action:none;cursor:crosshair}
+.par-sec{display:grid;gap:6px}
+.par-sec h4,.aibox h4{display:flex;align-items:center;gap:8px}
+.par-sec h4{margin:0;font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.05em;text-transform:uppercase}
+.par-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin:4px 0 0}
+.par-facts div{border:1px solid var(--line);border-radius:6px;padding:6px 10px;background:var(--panel2)}
+.par-facts dt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.par-facts dd{margin:2px 0 0;font-weight:600;font-size:13px}
+.par-tbl tfoot td{font-weight:600;border-top:2px solid var(--line)}
+.par-ic{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--steel);color:#fff;font-family:var(--f-body);font-size:11px;font-weight:700;letter-spacing:0}
+.par-ic.warn{background:var(--warn)}
+.aibox{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.aibox ol{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+.par-cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--accent-soft)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;vertical-align:-2px;margin-right:6px}
 @media (prefers-reduced-motion: no-preference){.spinner{animation:spin 1s linear infinite}}
 @keyframes spin{to{transform:rotate(360deg)}}

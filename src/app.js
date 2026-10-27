@@ -587,7 +587,7 @@ let RES = null;
 function cls(ok, warn) { return ok ? 'ok' : warn ? 'warn' : 'bad'; }
 function update() {
   clearTimeout(updTimer);
-  try { updateCore(); }
+  try { updateCore(); if (typeof MONT !== 'undefined' && MONT && MONT.on) montRefresh(); }
   catch (err) {
     console.error(err);
     const b = $('#banner'); b.className = 'banner bad';
@@ -931,6 +931,18 @@ async function exportPdf() {
   let vw = CW, vh = vw * vista.h / vista.w; if (vh > 70) { vh = 70; vw = vh * vista.w / vista.h; }
   need(vh + 4);
   doc.addImage(vista.canvas.toDataURL('image/jpeg', 0.9), 'JPEG', ML, y, vw, vh); y += vh + 6;
+  // simulação sobre a foto do local (quando houve análise de foto)
+  if (MONT.on && MONT.img && MONT.cv) {
+    const ed = MONT.edit, md = MONT.mode; MONT.edit = false; MONT.mode = 'depois';
+    const c2 = document.createElement('canvas'); c2.width = MONT.cv.width; c2.height = MONT.cv.height; montDraw(c2, true);
+    MONT.edit = ed; MONT.mode = md;
+    let fw = CW, fh = fw * c2.height / c2.width; if (fh > 110) { fh = 110; fw = fh * c2.width / c2.height; }
+    heading('Simulação no local', fh + 14);
+    doc.addImage(c2.toDataURL('image/jpeg', 0.88), 'JPEG', ML + (CW - fw) / 2, y, fw, fh); y += fh + 3;
+    doc.setFont('Plex', 'normal'); doc.setFontSize(7.6); doc.setTextColor(...rgb(C.muted));
+    doc.text('Montagem ilustrativa sobre a foto enviada, com as camadas e o comprimento deste projeto. As proporções são aproximadas.', ML, y + 2); y += 8;
+    doc.setTextColor(...rgb(C.ink));
+  }
   // quantitativos
   heading('Quantitativos', 60);
   const qb = [];
@@ -1189,8 +1201,10 @@ Responda SOMENTE com um objeto JSON neste formato:
  "como_fazer": ["passos da execução neste local"],
  "drenagem": ["medidas de drenagem"],
  "riscos": ["riscos e cuidados que você percebe nas fotos"],
- "conferir_no_local": ["o que medir ou verificar antes de executar"]
-}`;
+ "conferir_no_local": ["o que medir ou verificar antes de executar"],
+ "posicao_na_foto": {"foto": índice da foto onde o muro aparece melhor (0 = primeira), "base_esq": [x, y], "base_dir": [x, y], "topo_esq": [x, y], "topo_dir": [x, y]} ou null
+}
+Em "posicao_na_foto", dê os 4 cantos da FACE DO MURO como ele ficaria construído nessa foto (pé e topo, lado esquerdo e direito), em coordenadas de 0 a 1 a partir do canto superior esquerdo da imagem (x para a direita, y para baixo). Use o pé do barranco ou a margem como base e a altura que você sugeriu, respeitando a perspectiva.`;
 }
 
 function aiStatus(html) { $('#aiStatus').innerHTML = html; }
@@ -1213,34 +1227,219 @@ function aiAddFiles(list) {
   aiRenderThumbs();
 }
 
+/* ===== Parecer da análise de foto + simulação do muro sobre a foto ===== */
+var MONT = { on: false, img: null, pts: null, mode: 'depois', split: 0.5, edit: false, useProject: false, camadas: null, tex: null, drag: -1, cv: null };
+function rng(seed) { let x = seed >>> 0 || 1; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }
+// textura de pedra com tela: 4 m × 1 m de caixa (200 px por metro)
+function montTexture() {
+  if (MONT.tex) return MONT.tex;
+  const W = 800, H = 200, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), R = rng(7);
+  g.fillStyle = '#3d3a36'; g.fillRect(0, 0, W, H);
+  const tons = [[128, 122, 112], [150, 143, 130], [112, 108, 101], [165, 156, 140], [97, 93, 88], [140, 128, 108], [176, 168, 154]];
+  for (let k = 0; k < 900; k++) {
+    const x = R() * W, y = R() * H, r = 9 + R() * 15, rx = r * (0.8 + R() * 0.7), ry = r * (0.6 + R() * 0.5), a = R() * Math.PI;
+    const [cr, cg, cb] = tons[Math.floor(R() * tons.length)], d = (R() - 0.5) * 24;
+    const gr = g.createRadialGradient(x - rx * 0.35, y - ry * 0.4, 1, x, y, Math.max(rx, ry));
+    gr.addColorStop(0, `rgb(${cr + d + 38},${cg + d + 38},${cb + d + 36})`); gr.addColorStop(1, `rgb(${cr + d - 30},${cg + d - 30},${cb + d - 30})`);
+    g.fillStyle = gr; g.beginPath();
+    const n = 7; for (let t = 0; t < n; t++) { const ang = a + t / n * Math.PI * 2, f = 0.82 + R() * 0.3; g.lineTo(x + Math.cos(ang) * rx * f, y + Math.sin(ang) * ry * f); }
+    g.closePath(); g.fill();
+  }
+  // tela hexagonal (malha 8 × 10 cm), em diagonais levemente onduladas
+  g.strokeStyle = 'rgba(214,220,224,.78)'; g.lineWidth = 1.6;
+  const p = 20;
+  for (let d = -H; d < W + H; d += p) {
+    g.beginPath(); for (let y = 0; y <= H; y += 4) g.lineTo(d + y * 0.62 + Math.sin(y * 0.35) * 1.2, y); g.stroke();
+    g.beginPath(); for (let y = 0; y <= H; y += 4) g.lineTo(d - y * 0.62 + Math.sin(y * 0.35) * 1.2, y); g.stroke();
+  }
+  MONT.tex = c; return c;
+}
+const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+// ponto da face: u ao longo do muro (0 a 1), v da base ao topo (0 a 1)
+function montP(u, v) { const [BL, BR, TL, TR] = MONT.pts; return lerp(lerp(BL, BR, u), lerp(TL, TR, u), v); }
+function montCamadas() {
+  if (MONT.useProject || !MONT.camadas) return st.layers.map(l => ({ b: l.b, h: l.h, cf: !!l.cf }));
+  return MONT.camadas;
+}
+function montDraw(cv, exportando) {
+  const img = MONT.img; if (!img || !MONT.pts) return;
+  const W = cv.width, H = cv.height, g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(img, 0, 0, W, H);
+  if (MONT.mode === 'antes') { montTag(g, W, H, 'ANTES'); return; }
+  const cams = montCamadas(), Ht = cams.reduce((a, c) => a + c.h, 0) || 1, Lm = Math.max(1, st.L), bl = st.boxLen || 2;
+  const px = q => [q[0] * W, q[1] * H], tex = montTexture(), R = rng(11);
+  // sombra no pé do muro
+  const b0 = px(montP(0, 0)), b1 = px(montP(1, 0)), sh = Math.hypot(b1[0] - b0[0], b1[1] - b0[1]) * 0.03;
+  g.save(); g.beginPath(); g.moveTo(b0[0], b0[1]); g.lineTo(b1[0], b1[1]); g.lineTo(b1[0], b1[1] + sh); g.lineTo(b0[0], b0[1] + sh); g.closePath();
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.filter = 'blur(6px)'; g.fill(); g.restore();
+  let y = 0;
+  cams.forEach((c, i) => {
+    const v0 = y / Ht, v1 = (y + c.h) / Ht; y += c.h;
+    const off = st.stagger && i % 2 === 1 ? bl / 2 : 0, cuts = [0];
+    for (let x = off || bl; x < Lm - 1e-6; x += bl) cuts.push(x);
+    cuts.push(Lm);
+    const passo = Math.max(1, Math.ceil((cuts.length - 1) / 60));   // muros muito longos: agrupa caixas no desenho
+    for (let k = 0; k < cuts.length - 1; k += passo) {
+      const u0 = cuts[k] / Lm, u1 = cuts[Math.min(cuts.length - 1, k + passo)] / Lm, comp = (cuts[Math.min(cuts.length - 1, k + passo)] - cuts[k]);
+      const A = px(montP(u0, v0)), B = px(montP(u1, v0)), C = px(montP(u1, v1)), D = px(montP(u0, v1));
+      g.save(); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineTo(C[0], C[1]); g.lineTo(D[0], D[1]); g.closePath(); g.clip();
+      // textura mapeada na caixa (afim a partir do canto superior esquerdo)
+      const sw = Math.min(800, comp * 200), shh = Math.min(200, c.h * 200), sx = R() * (800 - sw);
+      g.setTransform((C[0] - D[0]) / sw, (C[1] - D[1]) / sw, (A[0] - D[0]) / shh, (A[1] - D[1]) / shh, D[0], D[1]);
+      g.drawImage(tex, sx, 0, sw, shh, 0, 0, sw, shh);
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      const gr = g.createLinearGradient(D[0], D[1], A[0], A[1]);
+      gr.addColorStop(0, 'rgba(255,255,255,.10)'); gr.addColorStop(0.6, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.28)');
+      g.fillStyle = gr; g.fill(); g.restore();
+      g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineTo(C[0], C[1]); g.lineTo(D[0], D[1]); g.closePath();
+      g.strokeStyle = 'rgba(40,44,48,.85)'; g.lineWidth = Math.max(1.2, W / 900); g.stroke();
+    }
+    // degrau: o topo da camada aparece quando a camada de cima é mais estreita
+    const prox = cams[i + 1];
+    if (prox && prox.b < c.b - 1e-6) {
+      const dv = Math.min(0.35, 0.12 * (c.b - prox.b)) * (c.h / Ht);
+      const A = px(montP(0, v1 - dv)), B = px(montP(1, v1 - dv)), C = px(montP(1, v1)), D = px(montP(0, v1));
+      g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineTo(C[0], C[1]); g.lineTo(D[0], D[1]); g.closePath();
+      const gt = g.createLinearGradient(D[0], D[1], A[0], A[1]);
+      gt.addColorStop(0, 'rgba(25,25,25,.55)'); gt.addColorStop(0.35, 'rgba(210,205,195,.35)'); gt.addColorStop(1, 'rgba(255,255,255,.18)');
+      g.fillStyle = gt; g.fill();
+    }
+  });
+  montCotas(g, W, H, Ht, Lm);
+  montTag(g, W, H, exportando ? null : 'DEPOIS');
+  if (MONT.mode === 'comparar') {
+    const xs = W * MONT.split;
+    g.save(); g.beginPath(); g.rect(0, 0, xs, H); g.clip(); g.drawImage(img, 0, 0, W, H); montTag(g, W, H, 'ANTES'); g.restore();
+    g.fillStyle = '#fff'; g.fillRect(xs - 1.5, 0, 3, H);
+    g.beginPath(); g.arc(xs, H / 2, Math.max(14, W / 70), 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#16212B'; g.font = `700 ${Math.max(12, W / 80)}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⇆', xs, H / 2 + 1);
+  }
+  if (MONT.edit && !exportando) MONT.pts.forEach((q, k) => {
+    const [x, yy] = px(q); g.beginPath(); g.arc(x, yy, Math.max(9, W / 110), 0, Math.PI * 2);
+    g.fillStyle = 'rgba(169,97,27,.92)'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
+  });
+}
+function montTexto(g, txt, x, y, size, alinhar) {
+  g.font = `600 ${size}px "IBM Plex Sans", system-ui, sans-serif`; g.textAlign = alinhar || 'center'; g.textBaseline = 'middle';
+  g.lineWidth = Math.max(3, size / 4); g.strokeStyle = 'rgba(10,16,22,.85)'; g.strokeText(txt, x, y); g.fillStyle = '#fff'; g.fillText(txt, x, y);
+}
+function montCotas(g, W, H, Ht, Lm) {
+  const px = q => [q[0] * W, q[1] * H], s = Math.max(13, W / 60), o = W * 0.025;
+  let BL = px(montP(0, 0)), TL = px(montP(0, 1)), BR = px(montP(1, 0));
+  const TR = px(montP(1, 1)), direita = BL[0] < W * 0.12 && W - BR[0] > BL[0];
+  g.strokeStyle = '#fff'; g.lineWidth = Math.max(1.5, W / 700); g.setLineDash([]);
+  const seta = (a, b) => { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); [a, b].forEach((p, i) => { const q = i ? a : b, ang = Math.atan2(p[1] - q[1], p[0] - q[0]), k = s * 0.55; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(p[0] - k * Math.cos(ang - 0.4), p[1] - k * Math.sin(ang - 0.4)); g.moveTo(p[0], p[1]); g.lineTo(p[0] - k * Math.cos(ang + 0.4), p[1] - k * Math.sin(ang + 0.4)); g.stroke(); }); };
+  g.save(); g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 4;
+  const a = direita ? [BR[0] + o, BR[1]] : [BL[0] - o, BL[1]], b = direita ? [TR[0] + o, TR[1]] : [TL[0] - o, TL[1]]; seta(a, b);
+  const c = [BL[0], BL[1] + o * 0.9], d = [BR[0], BR[1] + o * 0.9]; seta(c, d); g.restore();
+  montTexto(g, `H = ${fmt(Ht, 1)} m`, a[0] + (direita ? s * 0.4 : -s * 0.4), (a[1] + b[1]) / 2, s, direita ? 'left' : 'right');
+  montTexto(g, `L = ${fmt(Lm, Lm % 1 ? 1 : 0)} m`, (c[0] + d[0]) / 2, c[1] + s * 0.9, s);
+}
+function montTag(g, W, H, rot) {
+  const s = Math.max(11, W / 95);
+  if (rot) { g.fillStyle = 'rgba(10,16,22,.72)'; const tw = g.measureText ? (g.font = `700 ${s}px system-ui`, g.measureText(rot).width) : 60; g.fillRect(s, s, tw + s * 1.4, s * 1.9); g.fillStyle = '#fff'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(rot, s * 1.7, s * 1.95); }
+  montTexto(g, 'Simulação ilustrativa · GabiãoCAD', W - s, H - s * 1.2, s * 0.85, 'right');
+}
+function montRefresh() { if (MONT.cv) montDraw(MONT.cv); const t = $('#montTbl'); if (t) t.innerHTML = montTabela(); }
+function montTabela() {
+  const cams = montCamadas(), Ht = cams.reduce((a, c) => a + c.h, 0);
+  const rows = cams.map((c, i) => `<tr><td>C${i + 1}${i === 0 ? ' <small>base</small>' : i === cams.length - 1 ? ' <small>topo</small>' : ''}</td><td class="n">${fmt(c.b, 1)} m</td><td class="n">${fmt(c.h, 1)} m</td><td>${c.cf ? 'Contraforte' : 'Em fila'}</td></tr>`).reverse().join('');
+  return `<thead><tr><th>Camada</th><th class="n">Largura</th><th class="n">Altura</th><th>Caixas</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td>Total</td><td class="n">base ${fmt(cams[0]?.b || 0, 1)} m</td><td class="n">${fmt(Ht, 1)} m</td><td>${MONT.useProject ? '<span class="pill ok">ajustada pelo cálculo</span>' : '<span class="pill warn">indicada pela foto</span>'}</td></tr></tfoot>`;
+}
+function montSetup(r) {
+  const box = $('#montBox'); if (!box) return;
+  const pos = r.posicao_na_foto, idx = pos && Number.isInteger(+pos.foto) ? Math.min(AI.files.length - 1, Math.max(0, +pos.foto)) : 0;
+  const ok = q => Array.isArray(q) && q.length === 2 && q.every(v => Number.isFinite(+v) && v >= -0.2 && v <= 1.2);
+  const pts = pos && ['base_esq', 'base_dir', 'topo_esq', 'topo_dir'].every(k => ok(pos[k])) ? ['base_esq', 'base_dir', 'topo_esq', 'topo_dir'].map(k => pos[k].map(Number)) : null;
+  MONT.pts = pts || [[0.12, 0.84], [0.88, 0.84], [0.12, 0.46], [0.88, 0.46]];
+  MONT.camadas = Array.isArray(r.camadas) && r.camadas.length ? r.camadas.map(c => ({ b: +c.b || 1, h: +c.h === 0.5 ? 0.5 : 1, cf: !!c.contraforte })) : null;
+  MONT.useProject = false; MONT.mode = 'depois'; MONT.edit = !pts;
+  const f = AI.files[idx]; if (!f) { box.hidden = true; return; }
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = $('#montCv'); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+    MONT.img = img; MONT.cv = cv; MONT.on = true; montRefresh(); montModeUI();
+    if (!pts) $('#montHint').textContent = 'Arraste os 4 pontos laranja para os cantos onde o muro vai ficar (pé e topo, dos dois lados).';
+  };
+  img.src = url;
+  const cv = $('#montCv');
+  const pos01 = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height]; };
+  cv.onpointerdown = e => {
+    const p = pos01(e);
+    if (MONT.mode === 'comparar' && !MONT.edit) { MONT.drag = 9; MONT.split = Math.min(1, Math.max(0, p[0])); montRefresh(); cv.setPointerCapture(e.pointerId); return; }
+    if (!MONT.edit) return;
+    let best = -1, dmin = 0.05;
+    MONT.pts.forEach((q, k) => { const d = Math.hypot(q[0] - p[0], (q[1] - p[1]) * cv.height / cv.width); if (d < dmin) { dmin = d; best = k; } });
+    MONT.drag = best; if (best >= 0) cv.setPointerCapture(e.pointerId);
+  };
+  cv.onpointermove = e => {
+    if (MONT.drag < 0) return; const p = pos01(e);
+    if (MONT.drag === 9) MONT.split = Math.min(1, Math.max(0, p[0])); else MONT.pts[MONT.drag] = [Math.min(1.1, Math.max(-0.1, p[0])), Math.min(1.1, Math.max(-0.1, p[1]))];
+    montRefresh();
+  };
+  cv.onpointerup = () => { MONT.drag = -1; };
+  box.querySelectorAll('[data-mm]').forEach(b => b.onclick = () => { MONT.mode = b.dataset.mm; montModeUI(); montRefresh(); });
+  $('#montEdit').onclick = () => { MONT.edit = !MONT.edit; montModeUI(); montRefresh(); };
+  $('#montSave').onclick = () => {
+    const ed = MONT.edit, md = MONT.mode; MONT.edit = false; if (MONT.mode === 'antes') MONT.mode = 'depois';
+    const c2 = document.createElement('canvas'); c2.width = MONT.cv.width; c2.height = MONT.cv.height; montDraw(c2, true);
+    MONT.edit = ed; MONT.mode = md;
+    c2.toBlob(bl => saveFile(slug() + '-simulacao.png', bl), 'image/png');
+  };
+}
+function montModeUI() {
+  document.querySelectorAll('#montBox [data-mm]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mm === MONT.mode));
+  const e = $('#montEdit'); if (e) { e.setAttribute('aria-pressed', MONT.edit); e.textContent = MONT.edit ? 'Concluir ajuste' : 'Ajustar posição'; }
+  const h = $('#montHint'); if (h && MONT.mode === 'comparar' && !MONT.edit) h.textContent = 'Arraste sobre a imagem para comparar antes e depois.';
+  else if (h && MONT.edit) h.textContent = 'Arraste os 4 pontos laranja para os cantos onde o muro vai ficar (pé e topo, dos dois lados).';
+  else if (h) h.textContent = 'A simulação usa as camadas, o comprimento e as caixas do projeto. Use "Ajustar posição" se o muro não estiver no lugar certo.';
+}
+
 function aiRenderResult(r) {
-  const L = a => (Array.isArray(a) && a.length ? '<ul>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '<p class="help">—</p>');
+  const L = a => (Array.isArray(a) && a.length ? '<ol>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ol>' : '<p class="help">Nada a destacar.</p>');
   const conf = { baixa: 'warn', media: 'cf', alta: 'ok' }[r.confianca] || 'warn';
   const facts = [];
-  if (Number.isFinite(+r.altura_m)) facts.push(`Altura <b>${fmt(+r.altura_m, 1)} m</b>`);
-  if (Number.isFinite(+r.comprimento_m) && r.comprimento_m) facts.push(`Comprimento <b>${fmt(+r.comprimento_m, 0)} m</b>`);
-  if (r.situacao) facts.push(`Situação <b>${esc(r.situacao)}</b>`);
-  if (Array.isArray(r.camadas) && r.camadas.length) facts.push(`Camadas <b>${r.camadas.map(c => fmt(+c.b, 1)).join(' / ')} m</b>`);
-  if (r.solo_aterro) facts.push(`Aterro <b>${esc(r.solo_aterro)}</b>`);
-  if (r.fundacao) facts.push(`Fundação <b>${esc(r.fundacao)}</b>`);
-  if (r.leito_rio) facts.push('<b>Leito de rio</b>');
-  if (r.agua_no_aterro) facts.push('<b>Água no aterro</b>');
+  if (Number.isFinite(+r.altura_m)) facts.push(['Altura do muro', `${fmt(+r.altura_m, 1)} m`]);
+  if (Number.isFinite(+r.comprimento_m) && r.comprimento_m) facts.push(['Comprimento', `${fmt(+r.comprimento_m, 0)} m`]);
+  if (r.situacao) facts.push(['Situação', r.situacao === 'corte' ? 'Corte no barranco' : 'Aterro']);
+  if (r.solo_aterro) facts.push(['Solo do aterro', r.solo_aterro]);
+  if (r.fundacao) facts.push(['Fundação', r.fundacao]);
+  facts.push(['Água', r.leito_rio ? 'Leito de rio' : r.agua_no_aterro ? 'Água no aterro' : 'Sem água aparente']);
+  const hoje = new Date().toLocaleDateString('pt-BR'), nf = AI.files.length;
+  const temLocal = (Array.isArray(r.camadas) && r.camadas.length) || Number.isFinite(+r.altura_m);
   const box = $('#aiResult');
-  box.innerHTML = `<div class="aires-top"><p class="aires-sum">${esc(r.resumo || '')}</p>
-      <span class="pill ${conf}">confiança ${({ baixa: 'baixa', media: 'média', alta: 'alta' })[r.confianca] || 'baixa'}</span></div>
-    <div class="aifacts">${facts.map(f => `<span class="aifact">${f}</span>`).join('')}</div>
-    <div class="aicols">
-      <div class="aibox"><h4>Como fazer</h4>${L(r.como_fazer)}</div>
-      <div class="aibox"><h4>Drenagem</h4>${L(r.drenagem)}</div>
-      <div class="aibox"><h4>Riscos e cuidados</h4>${L(r.riscos)}</div>
-      <div class="aibox"><h4>Conferir no local</h4>${L(r.conferir_no_local)}</div>
+  box.innerHTML = `
+    <div class="par-head">
+      <div><span class="par-kicker">Parecer preliminar do local</span><h4 class="par-title">${esc(st.nome || 'Muro de gabião')}</h4>
+        <span class="help">${hoje} · ${nf} foto${nf > 1 ? 's' : ''} analisada${nf > 1 ? 's' : ''} · análise por inteligência artificial</span></div>
+      <span class="pill ${conf} par-conf">Confiança ${({ baixa: 'baixa', media: 'média', alta: 'alta' })[r.confianca] || 'baixa'}</span>
     </div>
-    <div class="row-btns"><button class="btn primary" type="button" id="aiApply">Aplicar sugestão ao projeto</button>
-      <span class="help">Estimativa feita a partir de fotos. Meça no local e confira o cálculo antes de executar.</span></div>`;
+    ${temLocal ? `<figure class="mont" id="montBox">
+      <div class="mont-bar">
+        <div class="seg" role="group" aria-label="Visualização"><button type="button" data-mm="antes" aria-pressed="false">Antes</button><button type="button" data-mm="depois" aria-pressed="true">Depois</button><button type="button" data-mm="comparar" aria-pressed="false">Comparar</button></div>
+        <div class="row-btns"><button class="btn" type="button" id="montEdit" aria-pressed="false">Ajustar posição</button><button class="btn" type="button" id="montSave">Baixar imagem</button></div>
+      </div>
+      <canvas id="montCv" class="mont-cv" aria-label="Simulação do muro de gabião sobre a foto do local"></canvas>
+      <figcaption class="help" id="montHint"></figcaption>
+    </figure>` : ''}
+    <div class="par-sec"><h4>Diagnóstico</h4><p class="aires-sum">${esc(r.resumo || '')}</p>
+      <dl class="par-facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div>
+    ${temLocal ? `<div class="par-sec"><h4>Seção proposta</h4><div class="tbl"><table id="montTbl" class="par-tbl"></table></div></div>` : ''}
+    <div class="aicols">
+      <div class="aibox"><h4><span class="par-ic">1</span>Como executar</h4>${L(r.como_fazer)}</div>
+      <div class="aibox"><h4><span class="par-ic">2</span>Drenagem</h4>${L(r.drenagem)}</div>
+      <div class="aibox"><h4><span class="par-ic warn">!</span>Riscos e cuidados</h4>${L(r.riscos)}</div>
+      <div class="aibox"><h4><span class="par-ic">✓</span>Conferir no local</h4>${L(r.conferir_no_local)}</div>
+    </div>
+    <div class="par-cta"><button class="btn primary" type="button" id="aiApply">Aplicar ao projeto e verificar estabilidade</button>
+      <span class="help">Estimativa feita a partir de fotos. Meça no local e confira o cálculo. O projeto executivo exige engenheiro responsável e ART.</span></div>`;
   box.hidden = false;
-  const canApply = (Array.isArray(r.camadas) && r.camadas.length) || Number.isFinite(+r.altura_m);
-  $('#aiApply').hidden = !canApply;
+  $('#aiApply').hidden = !temLocal;
   $('#aiApply').onclick = () => aiApply(r);
+  MONT.on = false; if (temLocal) { montSetup(r); const t = $('#montTbl'); if (t) t.innerHTML = montTabela(); }
 }
 
 function aiApply(r) {
@@ -1265,6 +1464,7 @@ function aiApply(r) {
     st.river.v = num(v.velocidade_ms, st.river.v); st.river.ds = num(v.erosao_m, st.river.ds);
     st.river.apron = true; st.river.lc = Math.max(num(v.colchao_m, 0), 1.5 * st.river.ds);
   } else st.river.on = !!r.leito_rio;
+  MONT.useProject = true;
   st = sanitize(st); renderLayers(); fillInputs(); update();
   if (!$('#banner').classList.contains('ok')) { toast('A sugestão não passava em tudo. Ajustando com caixas inteiras…'); runOptimize('foto'); }
   else toast('Sugestão aplicada. Todas as verificações OK.');

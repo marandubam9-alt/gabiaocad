@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Como calcular muro de gabião: passo a passo com exemplo · GabiãoCAD</title>
+<meta name="description" content="Passo a passo para dimensionar um muro de gabião: dados de entrada, empuxo de Coulomb, tombamento, deslizamento, excentricidade, tensão no solo e estabilidade global, com exemplo numérico resolvido.">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="Como calcular muro de gabião: passo a passo com exemplo">
+<meta property="og:description" content="Empuxo, tombamento, deslizamento, excentricidade e tensão no solo, com um exemplo resolvido.">
+<!--IF:SITE_URL--><meta property="og:url" content="{{SITE_URL}}como-calcular-muro-de-gabiao.html">
+<meta property="og:image" content="{{SITE_URL}}assets/compartilhar.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="{{SITE_URL}}como-calcular-muro-de-gabiao.html"><!--/IF:SITE_URL-->
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="app/fonts/fonts.css">
+<style>
+:root{--ink:#16212B;--muted:#5A6873;--line:#D3DAE0;--bg:#F5F7F8;--panel:#FFFFFF;--soft:#EAEFF2;--accent:#D86A1B;--accent-2:#FF9E2C;--accent-soft:#FBE7D6;--night:#121B23;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;--f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--f-body)}
+a{color:var(--accent)}
+.top{background:var(--night);color:#fff}
+.bar{max-width:1160px;margin:0 auto;padding:16px max(20px,env(safe-area-inset-left,0px));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:26px;text-decoration:none;color:#fff}
+.logo img{width:36px;height:36px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border-radius:8px;font-weight:600;text-decoration:none;background:var(--accent);color:#fff}
+.btn:hover{background:#c25c12}.btn:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+article{max-width:760px;margin:0 auto;padding:44px max(20px,env(safe-area-inset-left,0px)) 64px}
+.eyebrow{font-family:var(--f-mono);font-size:13px;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(36px,6vw,54px);line-height:1.02;margin:.2em 0 .4em;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4vw,36px);line-height:1.1;margin:1.8em 0 .4em}
+.intro{font-size:19px;color:var(--muted)}
+.toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:24px 0}
+.toc ol{margin:6px 0 0;padding-left:20px}
+.f{font-family:var(--f-mono);font-size:15px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:12px 16px;margin:14px 0;overflow-x:auto;white-space:nowrap}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);font-size:15.5px;margin:14px 0}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left}
+th{background:var(--soft)}
+td.n{text-align:right;font-family:var(--f-mono);white-space:nowrap}
+.tw{overflow-x:auto}
+.box{background:var(--accent-soft);border-radius:10px;padding:14px 18px;margin:18px 0}
+.cta{background:var(--night);color:#fff;border-radius:14px;padding:26px;margin:40px 0 0}
+.cta h2{margin:0 0 8px;color:#fff}.cta p{color:#C9D3DA;margin:0 0 18px}
+.cta .row{display:flex;gap:12px;flex-wrap:wrap}.cta .ghost{background:transparent;border:2px solid #fff}
+footer{background:var(--night);color:#AEBBC4;padding:28px max(20px,env(safe-area-inset-left,0px));font-size:14px;text-align:center}
+footer a{color:#fff}
+</style>
+</head>
+<body>
+<header class="top"><div class="bar"><a class="logo" href="./"><img src="assets/icon.png" alt="">GabiãoCAD</a><a class="btn" href="./#calcular">Calcular meu muro</a></div></header>
+<article>
+  <span class="eyebrow">Guia técnico · muros de gabião</span>
+  <h1>Como calcular um muro de gabião, passo a passo</h1>
+  <p class="intro">O muro de gabião é um muro de gravidade: ele segura o terreno pelo próprio peso. Calcular um muro desses é conferir se esse peso basta para o muro não tombar, não escorregar e não afundar no solo. Este guia mostra o caminho, com um exemplo resolvido.</p>
+
+  <nav class="toc" aria-label="Neste guia"><b>Neste guia</b>
+    <ol><li><a href="#dados">Dados de entrada</a></li><li><a href="#pre">Pré-dimensionamento</a></li><li><a href="#empuxo">Empuxo do solo</a></li><li><a href="#verif">As verificações</a></li><li><a href="#exemplo">Exemplo resolvido</a></li><li><a href="#agua">O papel da água</a></li></ol>
+  </nav>
+
+  <h2 id="dados">1. Dados de entrada</h2>
+  <p>Antes de qualquer conta, levante:</p>
+  <ul>
+    <li><b>Geometria:</b> altura que o muro vai segurar (H), comprimento e quanto a base fica enterrada.</li>
+    <li><b>Solo atrás do muro (aterro):</b> peso específico γ e ângulo de atrito φ. Se houver talude acima do muro, sua inclinação β.</li>
+    <li><b>Solo embaixo do muro (fundação):</b> ângulo de atrito, coesão e tensão admissível. Aqui vale uma sondagem: é o dado que mais derruba projetos.</li>
+    <li><b>Cargas:</b> sobrecarga em cima do aterro, como rua, casa ou caminhões.</li>
+    <li><b>Água:</b> até onde o aterro pode encharcar e se há rio na frente.</li>
+    <li><b>Gabião:</b> peso específico da rocha (granito fica perto de 2,65 t/m³) e porosidade do enchimento (em geral 0,30 a 0,40).</li>
+  </ul>
+  <p>O peso específico do gabião cheio é o da rocha descontados os vazios: γ<sub>g</sub> = γ<sub>rocha</sub> × (1 − porosidade). Com granito e 30% de vazios, dá cerca de 1,85 t/m³.</p>
+
+  <h2 id="pre">2. Pré-dimensionamento</h2>
+  <p>Um bom ponto de partida é uma base com largura entre metade e dois terços da altura, diminuindo em degraus até o topo, com caixas de 1 m de largura. Inclinar o muro alguns graus para o lado do aterro (é comum usar 6° a 10°) ajuda bastante na estabilidade. Depois disso o muro é verificado e ajustado até passar em tudo.</p>
+
+  <h2 id="empuxo">3. Empuxo do solo</h2>
+  <p>O empuxo ativo é a força com que o aterro empurra o muro. Para muros de gabião costuma-se usar a teoria de Coulomb, que considera o atrito entre o solo e o muro (δ) e a inclinação do tardoz. No caso mais simples, com tardoz vertical, terreno plano e sem atrito, ela se reduz à fórmula de Rankine:</p>
+  <div class="f">K<sub>a</sub> = (1 − sen φ) / (1 + sen φ)</div>
+  <p>O empuxo do solo e o da sobrecarga q são:</p>
+  <div class="f">E<sub>a</sub> = ½ · γ · H² · K<sub>a</sub> &nbsp;(aplicado a H/3 da base)<br>E<sub>q</sub> = q · H · K<sub>a</sub> &nbsp;(aplicado a H/2 da base)</div>
+
+  <h2 id="verif">4. As verificações</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Verificação</th><th>O que confere</th><th>Critério usual</th></tr></thead>
+    <tbody>
+      <tr><td>Tombamento</td><td>Momento do peso contra o momento do empuxo, em torno da ponta do muro</td><td>FS ≥ 2,0</td></tr>
+      <tr><td>Deslizamento</td><td>Atrito na base contra a força horizontal do empuxo</td><td>FS ≥ 1,5</td></tr>
+      <tr><td>Excentricidade</td><td>Se a resultante cai no terço central da base, sem tração no solo</td><td>e ≤ B/6</td></tr>
+      <tr><td>Tensão no solo</td><td>Pressão máxima na fundação</td><td>σ<sub>máx</sub> ≤ σ<sub>adm</sub></td></tr>
+      <tr><td>Seções internas</td><td>As mesmas checagens em cada junta entre camadas de gabião</td><td>Resistência do gabião</td></tr>
+      <tr><td>Estabilidade global</td><td>Ruptura do terreno em volta, por baixo do muro (Bishop)</td><td>FS ≥ 1,5</td></tr>
+    </tbody>
+  </table></div>
+  <p>Os fatores de segurança acima são os mínimos usados pelo GabiãoCAD, conforme a NBR 11682. Para a excentricidade e a tensão no solo:</p>
+  <div class="f">e = B/2 − (M<sub>resistente</sub> − M<sub>tombamento</sub>) / N<br>σ<sub>máx</sub> = (N / B) · (1 + 6e / B)</div>
+
+  <h2 id="exemplo">5. Exemplo resolvido</h2>
+  <p>Um muro de gabião de <b>3 m de altura e 2 m de largura</b>, uma camada só, vertical, sem sobrecarga e sem água. Aterro com γ = 18 kN/m³ e φ = 30°. Gabião de granito com 30% de vazios. Contas por metro de muro:</p>
+  <div class="tw"><table>
+    <tbody>
+      <tr><td>Coeficiente de empuxo K<sub>a</sub> = (1 − sen 30°)/(1 + sen 30°)</td><td class="n">0,333</td></tr>
+      <tr><td>Empuxo E<sub>a</sub> = ½ · 18 · 3² · 0,333</td><td class="n">27,0 kN/m</td></tr>
+      <tr><td>Peso do gabião W = 18,2 kN/m³ · 2 m · 3 m</td><td class="n">109,2 kN/m</td></tr>
+      <tr><td>FS tombamento = (109,2 · 1,0) / (27,0 · 1,0)</td><td class="n">4,04 ≥ 2,0 ✓</td></tr>
+      <tr><td>FS deslizamento = 109,2 · tg 30° / 27,0</td><td class="n">2,34 ≥ 1,5 ✓</td></tr>
+      <tr><td>Excentricidade e = 1,0 − (109,2 − 27,0)/109,2</td><td class="n">0,25 m ≤ 0,33 ✓</td></tr>
+      <tr><td>Tensão máxima σ = (109,2/2) · (1 + 6 · 0,25/2)</td><td class="n">95 kPa</td></tr>
+    </tbody>
+  </table></div>
+  <p>O muro passa, desde que a fundação aguente 95 kPa (cerca de 9,7 tf/m²). Na prática ainda faltariam a estabilidade global e os casos com água, que dão bem mais trabalho à mão.</p>
+
+  <h2 id="agua">6. O papel da água</h2>
+  <p>A água é a principal causa de queda de muros de contenção. Com o aterro encharcado, o solo passa a empurrar com o peso submerso, a água empurra o muro com toda a pressão hidrostática e ainda aparece subpressão na base, aliviando o peso.</p>
+  <div class="box">No mesmo muro do exemplo, com o aterro encharcado até o topo, o fator de segurança ao deslizamento cai de <b>2,34</b> para <b>0,78</b>: o muro escorrega. Por isso a drenagem (dreno de pé, geotêxtil no tardoz e canaleta no topo) faz parte do projeto, não é um detalhe.</div>
+
+  <section class="cta">
+    <h2>Faça essas contas em segundos</h2>
+    <p>O GabiãoCAD faz todas as verificações, inclusive chuva, rio e estabilidade global, acha a largura mais econômica com caixas inteiras e gera o memorial em PDF.</p>
+    <div class="row"><a class="btn" href="./#calcular">Calcular meu muro agora</a><a class="btn ghost" href="app/">Testar o programa grátis</a></div>
+  </section>
+  <p style="color:var(--muted);font-size:14px;margin-top:24px">Este guia é material de estudo. Toda obra de contenção precisa de projeto e ART de um engenheiro habilitado.</p>
+</article>
+<footer><a href="./">GabiãoCAD</a> · <a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Privacidade</a></footer>
+</body>
+</html>

@@ -159,7 +159,9 @@
     if (r.cleared) { toast('Chave removida.'); aiInit(desktopAI); return; }
     $('#aiKeyBox').hidden = true; toast('Chave salva. Já pode analisar fotos.'); aiInit(desktopAI);
   };
-  aiInit(desktopAI);
+  // com contas ligadas, a análise de fotos é pelo servidor (incluída no plano); a chave própria da API só vale sem contas
+  const CONTAS = !!(window.GABIAO_CONFIG && window.GABIAO_CONFIG.supabaseUrl && window.GABIAO_CONFIG.supabaseAnonKey);
+  if (!CONTAS) aiInit(desktopAI);
 
   document.documentElement.classList.add('is-desktop');
   title();

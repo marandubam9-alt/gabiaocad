@@ -1,0 +1,7 @@
+const V='fru-app-90aeae496a';const FILES=["./", "data.json", "icon-180.png", "icon-192.png", "icon-512.png", "index.html", "lib/jspdf.plugin.autotable.min.js", "lib/jspdf.umd.min.js", "lib/xlsx.full.min.js", "local-claude.js", "manifest.webmanifest", "pr/map.json", "pr/p10.jpg", "pr/p11.jpg", "pr/p13.jpg", "pr/p15.jpg", "pr/p18.jpg", "pr/p19.jpg", "pr/p21.jpg", "pr/p24.jpg", "pr/p26.jpg", "pr/p28.jpg", "pr/p30.jpg", "pr/p32.jpg", "pr/p34.jpg", "pr/p36.jpg", "pr/p38.jpg", "pr/p40.jpg", "pr/p42.jpg", "pr/p44.jpg", "pr/p45.jpg", "pr/p46.jpg", "pr/p70.jpg", "pr/p71.jpg", "pr/p75a.jpg", "pr/p75b.jpg", "pr/p75c.jpg"];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('fru-app-')&&k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
+self.addEventListener('fetch',e=>{const u=new URL(e.request.url);
+  if(u.pathname.includes('/la/')){e.respondWith(caches.open('fru-fotos').then(c=>c.match(e.request.url)).then(r=>r||new Response('',{status:404})));return}
+  if(e.request.method!=='GET')return;
+  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(r=>r||fetch(e.request).then(n=>{if(n.ok&&u.origin===location.origin){const c=n.clone();caches.open(V).then(x=>x.put(e.request,c))}return n}).catch(()=>caches.match('./'))))});

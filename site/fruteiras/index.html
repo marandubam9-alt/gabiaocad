@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fruteiras">
+<link rel="apple-touch-icon" href="icon-180.png">
+<script src="local-claude.js"></script>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));</script>
+
+<title>Offline · Medição Fruteiras – Drenagem</title>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --bg:#f4f2ec;--card:#fffdf8;--ink:#1d2321;--mut:#6b716c;--line:#dcd8cc;
+  --ok:#2f8f5b;--falta:#d98a1c;--sem:#c8412f;--extra:#6c55b8;--road:#3a3f3c;--acc:#1f5f8b;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--card:#1f2421;--ink:#ecebe5;--mut:#9aa09a;--line:#343a36;--road:#8b918c;--acc:#6fb3e0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+header{padding:18px 16px 8px;max-width:1100px;margin:0 auto}
+header small{color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-size:11px;font-weight:600}
+h1{margin:2px 0 4px;font-size:22px;line-height:1.2}
+.sub{color:var(--mut);font-size:13px;margin:0}
+main{max-width:1100px;margin:0 auto;padding:0 12px 80px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+@media(min-width:760px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.kpi b{display:block;font-size:20px;font-family:"IBM Plex Mono",monospace;font-weight:500}
+.kpi span{font-size:12px;color:var(--mut)}
+.kpi i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:1px}
+nav#tabs{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:4px;overflow-x:auto;padding:8px 0;border-bottom:1px solid var(--line);scrollbar-width:none}
+#tabs button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;cursor:pointer}
+#tabs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+section{display:none;padding-top:12px}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--mut);margin:4px 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer}
+.chip.on{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+svg text{font-family:"IBM Plex Mono",monospace}
+.pt{cursor:pointer}
+.row-label{font-size:10px;fill:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+td.n,th.n{text-align:right;font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+.tw{overflow-x:auto}
+.tag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600;color:#fff}
+.t-ok{background:var(--ok)}.t-falta{background:var(--falta)}.t-sem{background:var(--sem)}.t-extra{background:var(--extra)}
+.muted{color:var(--mut)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:20}
+.sheet.on{display:block}
+.panel{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:var(--card);border-radius:16px 16px 0 0;padding:16px 14px 28px}
+@media(min-width:760px){.panel{left:auto;top:0;width:460px;max-height:none;border-radius:0}}
+.panel h2{margin:0;font-size:18px}
+.x{float:right;border:0;background:var(--line);color:var(--ink);border-radius:999px;width:32px;height:32px;font-size:18px;cursor:pointer}
+.al{border-left:3px solid var(--sem);padding:6px 10px;margin:6px 0;background:color-mix(in srgb,var(--sem) 8%,transparent);border-radius:0 6px 6px 0;font-size:13px}
+.al.auto{border-color:var(--falta);background:color-mix(in srgb,var(--falta) 10%,transparent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink);padding:4px 9px;font:inherit;font-size:12px;cursor:pointer}
+.seg button.on{background:var(--acc);color:#fff}
+.seg.seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;border:0;border-radius:0;overflow:visible}
+.seg3 button{--c:var(--acc);min-height:52px;padding:6px 4px;border:1.5px solid color-mix(in srgb,var(--c) 45%,transparent);border-radius:12px;background:color-mix(in srgb,var(--c) 7%,transparent);color:var(--c);font:inherit;font-size:13px;font-weight:600;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:background .15s,color .15s,transform .1s,box-shadow .15s,opacity .15s;-webkit-tap-highlight-color:transparent}
+.seg3 button .ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;line-height:1;border:1.5px solid currentColor}
+.seg3 button:active{transform:scale(.96)}
+.seg3 button[data-v="S"]{--c:var(--ok)}.seg3 button[data-v="N"]{--c:var(--sem)}.seg3 button[data-v="X"]{--c:#6b716c}
+@media (prefers-color-scheme:dark){.seg3 button[data-v="X"]{--c:#a3a8a3}}
+.seg3 button.on{background:var(--c);border-color:var(--c);color:#fff;box-shadow:0 2px 8px color-mix(in srgb,var(--c) 35%,transparent)}
+.seg3 button.on .ic{background:#fff;color:var(--c);border-color:#fff}
+.seg3:has(button.on) button:not(.on){opacity:.55}
+.pq{display:flex;align-items:center;gap:6px;margin-top:4px;padding:6px 10px;border-radius:10px;background:color-mix(in srgb,var(--ok) 9%,transparent);color:var(--ok);font-weight:600}
+.pq input{color:var(--ink)!important;font-weight:500}
+textarea{width:100%;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px;background:transparent;color:var(--ink);min-height:38px}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}.bar>div{height:100%;background:var(--falta)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;display:none;z-index:30}
+.tot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.op li{margin:6px 0}
+.syncb{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;background:var(--line);color:var(--mut);margin-right:4px}
+.syncb.on{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ph{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;font-size:12px}
+.ph img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--line)}
+.ph div{padding:6px 8px}
+.thumbs{display:flex;gap:8px;overflow-x:auto;padding:4px 0}
+.thumbs .ph{flex:none;width:150px}
+.ia{border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);background:color-mix(in srgb,var(--acc) 7%,transparent);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px}
+.ia ul{margin:4px 0;padding-left:18px}
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:40;display:none;align-items:center;justify-content:center}
+.viewer.on{display:flex}.viewer img{max-width:96vw;max-height:90vh}.viewer .x{position:absolute;top:12px;right:12px}
+.prog{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}@media(min-width:760px){.prog{grid-template-columns:repeat(4,1fr)}}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px}@keyframes sp{to{transform:rotate(360deg)}}
+.parecer{white-space:pre-wrap;font-size:14px}
+.ltag{display:inline-block;font:600 11px/1 "IBM Plex Mono",monospace;padding:3px 6px;border-radius:5px;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);margin-left:4px;vertical-align:1px}
+.devs{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;font-size:12px;margin:4px 0}.devs b{font-family:"IBM Plex Mono",monospace;color:var(--acc);font-size:12px}
+.devs span.d{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin:0 4px 4px 0;font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+.warn{display:none;position:sticky;top:0;z-index:25;padding:10px 14px;font-size:13px;line-height:1.35;color:#fff;background:var(--sem)}
+.warn.on{display:block}.warn.amber{background:#b26a00}.warn.blue{background:var(--acc)}
+.warn b{font-weight:700}.warn button{margin-left:6px;border:1px solid #fff;background:transparent;color:#fff;border-radius:6px;padding:2px 8px;font:inherit;font-size:12px;cursor:pointer}
+.qbadge{position:absolute;top:6px;left:6px;background:#b26a00;color:#fff;font-size:11px;border-radius:6px;padding:1px 6px}
+.ph{position:relative}
+.navb{position:sticky;bottom:-28px;margin:16px -14px -28px;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.navb .btn{padding:11px 8px;font-size:14px}.navb .btn:disabled{opacity:.35}
+/* ---- navegação por áreas ---- */
+main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,.06)}
+.bnav button{border:0;background:transparent;color:var(--mut);font:inherit;font-size:12px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.bnav .bi{font-size:19px;line-height:1.1}
+.bnav button.on{color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
+@media(min-width:760px){.bnav{left:50%;right:auto;transform:translateX(-50%);width:520px;bottom:14px;border:1px solid var(--line);border-radius:16px;padding:6px}}
+nav#tabs.hide{display:none}
+.toast{bottom:calc(86px + env(safe-area-inset-bottom))}
+.busca{display:flex;align-items:center;gap:8px;margin:10px 0 2px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 4px 4px 12px}
+.busca input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;padding:8px 0;outline:none}
+.busca .btn{padding:8px 16px}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.hero .pbar{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:8px 0 4px}.hero .pbar div{height:100%;background:var(--ok)}
+.acts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}@media(min-width:760px){.acts{grid-template-columns:repeat(4,1fr)}}
+.act{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:12px;font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.act span{font-size:12px;font-weight:400;color:var(--mut)}
+.ffg{border:1px solid var(--line);border-radius:12px;background:var(--card);margin-bottom:8px;overflow:hidden}
+.ffg>button{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;padding:12px;cursor:pointer;display:block}
+.ffbar{position:relative;height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:6px 0 2px}.ffbar>div{position:absolute;left:0;top:0;bottom:0;background:var(--acc)}.ffbar>i{position:absolute;top:0;bottom:0;background:var(--ok)}
+.ffit{border-top:1px solid var(--line);padding:8px 12px;font-size:13px}
+.ffit .row{display:flex;justify-content:space-between;gap:8px}
+.cont{display:flex;align-items:center;justify-content:space-between;gap:10px}
+</style>
+</head>
+<body>
+<div id="warn" class="warn" role="status" aria-live="polite"></div>
+<header>
+  <small>Sistema de medição · drenagem</small>
+  <h1>ES-475 Castelo–Fruteiras</h1>
+  <p class="sub"><span id="sync" class="syncb">conectando…</span> Contrato 007/2014 · Projeto executivo × 55ª medição · <span id="npts"></span> pontos de drenagem</p>
+  <form id="busca" class="busca" autocomplete="off"><span aria-hidden="true">🔎</span><input id="buscai" inputmode="decimal" placeholder="Ir para a estaca (ex.: 243 ou 243+06)" aria-label="Ir para a estaca"><button class="btn" type="submit">Ir</button></form>
+</header>
+<main>
+  <nav id="tabs">
+    <button data-t="inicio" data-a="inicio" class="on">Início</button>
+    <button data-t="mapa" data-a="campo">Mapa</button>
+    <button data-t="pend" data-a="campo">Lista de itens</button>
+    <button data-t="prio" data-a="campo">Roteiro</button>
+    <button data-t="lin" data-a="campo">Lineares</button>
+    <button data-t="urb" data-a="campo">Rede urbana</button>
+    <button data-t="fotos" data-a="campo">Fotos</button>
+    <button data-t="disc" data-a="campo">Outras disciplinas</button>
+    <button data-t="diario" data-a="campo">Diário de obra</button>
+    <button data-t="med" data-a="medicao">Memória da medição</button>
+    <button data-t="ff" data-a="medicao">Físico-financeiro</button>
+    <button data-t="saldo" data-a="medicao">Saldo da drenagem</button>
+    <button data-t="extra" data-a="medicao">Medido sem projeto</button>
+    <button data-t="alertas" data-a="medicao">Alertas</button>
+    <button data-t="analise" data-a="relat">Relatórios e análise</button>
+    <button data-t="sobre" data-a="relat">Parecer</button>
+  </nav>
+
+  <section id="s-inicio" class="on"><div id="inic1"></div><div class="kpis" id="kpis"></div><div id="inic"></div></section>
+
+  <section id="s-mapa">
+    <div class="card">
+      <div class="legend">
+        <span><i style="background:var(--sem)"></i>Sem medição no ponto</span>
+        <span><i style="background:var(--falta)"></i>Falta algo</span>
+        <span><i style="background:var(--ok)"></i>OK</span>
+        <span><i style="background:var(--extra)"></i>Medido sem projeto</span>
+        <span>▲ alerta escrito na memória · tamanho = valor pendente</span>
+        <span><i style="background:var(--acc);border-radius:2px;opacity:.5"></i>rede urbana (◆ = PV)</span>
+      </div>
+      <div class="filters" id="mapf"></div>
+      <div id="map"></div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">Toque num ponto para ver projeto × medido, o que falta e marcar o que já está executado em campo.</p>
+    </div>
+    <div class="card"><b>Pendência por trecho (1 km = 50 estacas)</b><div id="trechos" style="margin-top:8px"></div></div>
+  </section>
+
+  <section id="s-disc"><div id="disc"></div></section>
+  <section id="s-diario"><div id="dic"></div></section>
+  <section id="s-ff"><div id="ffc"></div></section>
+  <section id="s-analise"><div id="anc"></div></section>
+  <section id="s-med"><div id="medc"></div></section>
+  <section id="s-lin"><div id="linc"></div></section>
+  <section id="s-urb"><div id="urbc"></div></section>
+  <section id="s-fotos"><div class="card"><div class="tot"><span id="fotot"></span></div><div id="gal" class="gal"></div></div></section>
+  <section id="s-pend">
+    <div class="card">
+      <div class="filters" id="pendf"></div>
+      <div class="tot"><span id="pendtot"></span><span><button class="btn ghost" id="cp1">Copiar</button> <button class="btn" id="xl1" style="display:none">Baixar Excel</button></span></div>
+      <div class="tw"><table id="pendt"></table></div>
+    </div>
+  </section>
+
+  <section id="s-prio"><div class="card"><p class="muted" style="margin-top:0">Os 25 pontos com maior valor pendente. É o roteiro de vistoria sugerido.</p><div class="tw"><table id="priot"></table></div></div></section>
+  <section id="s-alertas"><div class="card" id="alc"></div></section>
+  <section id="s-extra"><div class="card"><p class="muted" style="margin-top:0">Linhas da memória sem ponto correspondente no projeto. Precisam de croqui/as built.</p><div class="tot"><span id="extot"></span></div><div class="tw"><table id="ext"></table></div></div></section>
+  <section id="s-saldo"><div class="card"><p class="muted" style="margin-top:0">O saldo do contrato comporta o que o projeto ainda pede?</p><div class="tw"><table id="saldot"></table></div></div></section>
+  <section id="s-sobre"><div class="card" id="sobre"></div></section>
+</main>
+
+<nav class="bnav" id="bnav" aria-label="Áreas do sistema">
+  <button data-a="inicio" class="on"><span class="bi">⌂</span>Início</button>
+  <button data-a="campo"><span class="bi">◉</span>Campo</button>
+  <button data-a="medicao"><span class="bi">▤</span>Medição</button>
+  <button data-a="relat"><span class="bi">⎙</span>Relatórios</button>
+</nav>
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+<div class="toast" id="toast"></div>
+<div class="viewer" id="viewer"><img id="vimg" alt="Foto ampliada"><button class="x" id="vx" aria-label="Fechar">×</button></div>
+<input type="file" id="fin" accept="image/*" multiple hidden>
+
+<script>
+const $=s=>document.querySelector(s);
+const fmtR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtQ=v=>(Math.round((v||0)*100)/100).toLocaleString('pt-BR');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtD=iso=>{try{return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
+let D=null,field={},fotos=[],DB=null,ASSETS=null,SAMPLE=null,DL=null,canWrite=true,openId=null;
+const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600)};
+const estN=s=>{const m=String(s||'').match(/(\d+)\+(\d+)(?:,(\d+))?/);return m?+m[1]+(+m[2]+(m[3]?+('0.'+m[3]):0))/20:null};
+const P=id=>D.points.find(p=>p.id===id);
+
+// ---------- armazenamento local (reserva) ----------
+// ---------- FILA NO APARELHO: nada se perde sem sinal ----------
+let storageOK=true,lastErr=false,syncing=false;
+const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){storageOK=false;return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){storageOK=false}}};
+let filaCampo=LS.get('fru-fila-campo',{}),filaHist=LS.get('fru-fila-hist',[]),filaFotos=[];
+{const old=LS.get('fru-campo',null);if(old){Object.entries(old).forEach(([k,v])=>{if(v&&(v.s||v.o)&&!filaCampo[k])filaCampo[k]={...v,at:v.at||new Date().toISOString()}});LS.set('fru-fila-campo',filaCampo);try{localStorage.removeItem('fru-campo')}catch(e){}}}
+const saveFila=()=>{LS.set('fru-fila-campo',filaCampo);LS.set('fru-fila-hist',filaHist);updateWarn()};
+const IDB=(()=>{let p=null;const open=()=>p||(p=new Promise((res,rej)=>{try{const r=indexedDB.open('fru-fila',1);r.onupgradeneeded=()=>r.result.createObjectStore('fotos',{keyPath:'qid'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}}));
+  const run=(mode,fn)=>open().then(db=>new Promise((res,rej)=>{const t=db.transaction('fotos',mode),rq=fn(t.objectStore('fotos'));t.oncomplete=()=>res(rq&&rq.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)}));
+  return {put:o=>run('readwrite',s=>s.put(o)),del:k=>run('readwrite',s=>s.delete(k)),all:()=>run('readonly',s=>s.getAll())}})();
+IDB.all().then(a=>{filaFotos=(a||[]).sort((x,y)=>x.at.localeCompare(y.at));updateWarn();if(D)render();syncAll()}).catch(()=>{storageOK=false;updateWarn()});
+function updateWarn(){
+  const w=$('#warn');if(!w)return;const nC=Object.keys(filaCampo).length,nF=filaFotos.length,pend=[nC?`${nC} alteraç${nC===1?'ão':'ões'}`:'',nF?`${nF} foto${nF===1?'':'s'}`:''].filter(Boolean).join(' e ')||'nada pendente';
+  let cls='',msg='';
+  if(DB===null&&connected){cls='red';msg=`<b>⚠ Não está salvando na nuvem.</b> Abra o sistema pelo link no claude.ai, logado na sua conta. Até lá, tudo fica guardado só neste celular (${pend}).`}
+  else if(nC||nF){if(!navigator.onLine||lastErr){cls='amber';const pl=nC+nF>1;msg=`<b>Sem sinal:</b> ${pend} guardada${pl?'s':''} neste celular. ${pl?'Sobem sozinhas':'Sobe sozinha'} quando o sinal voltar. Não limpe os dados do navegador.<button id="wretry">Tentar agora</button>`}else{cls='blue';msg=`<span class="spin" style="border-top-color:#fff"></span> Enviando ${pend}…`}}
+  if(!storageOK){cls='red';msg=(msg?msg+'<br>':'')+'<b>Este navegador não deixa guardar dados no celular:</b> não feche a página até tudo subir.'}
+  w.className='warn'+(msg?' on '+cls:'');w.innerHTML=msg;
+  const b=$('#wretry');if(b)b.onclick=()=>{lastErr=false;syncAll()};
+}
+let connected=false;
+async function syncAll(){
+  if(syncing||!DB||!canWrite)return;syncing=true;let err=false;
+  for(const k of Object.keys(filaCampo)){const val=filaCampo[k];try{await DB.doc('campo/k'+k).set(val);if(filaCampo[k]===val)delete filaCampo[k]}catch(e){if(e&&e.code==='invalid_argument'){console.warn('registro recusado',k,e);delete filaCampo[k];continue}err=true;break}}
+  while(filaHist.length&&!err){try{await DB.collection('hist').add(filaHist[0]);filaHist.shift()}catch(e){if(e&&e.code==='invalid_argument'){filaHist.shift();continue}err=true}}
+  saveFila();
+  for(const r of [...filaFotos]){if(err||!ASSETS)break;if(!await enviarFoto(r))err=true}
+  lastErr=err;syncing=false;updateWarn();
+}
+window.addEventListener('online',()=>{lastErr=false;syncAll()});window.addEventListener('offline',updateWarn);
+setInterval(()=>{if(Object.keys(filaCampo).length||filaFotos.length||filaHist.length)syncAll()},20000);
+
+// ---------- conexão com o banco compartilhado ----------
+async function connect(){
+  const sb=$('#sync');
+  try{
+    const c=window.claude;if(!c||!c.use)throw 0;
+    [DB,ASSETS,SAMPLE,DL]=await Promise.all(['db','assets','sample','downloads'].map(n=>c.use(n).catch(()=>null)));
+    const user=await c.use('user').catch(()=>null);USER=user;
+    if(user&&user.id){try{UID=await user.id()}catch(e){}}
+    if(user&&user.can){try{const w=await user.can('data.write');if(w===false)canWrite=false}catch(e){}}
+  }catch(e){}
+  if(DL)$('#xl1').style.display='';
+  connected=true;
+  if(!DB){field={...filaCampo};sb.textContent='⚠ sem nuvem – abra pelo link do claude.ai';sb.style.background='#fde2e2';sb.style.color='#a11';toast('Esta cópia não está ligada à nuvem: os avanços e fotos do celular não aparecem aqui. Abra pelo link do claude.ai logado na mesma conta.');updateWarn();render();return}
+  if(OFF){sb.textContent='📴 offline · salvo no celular';sb.classList.add('on')}else sb.textContent='sincronizando…';
+  let timer=setTimeout(()=>{sb.textContent='sem conexão – dados podem estar desatualizados'},10000);
+  DB.collection('campo').onSnapshot(snap=>{
+    const f={};snap.docs.forEach(d=>{const x=d.data();if(x)f[d.id.slice(1)]=x});Object.keys(filaCampo).forEach(k=>f[k]=filaCampo[k]);field=f;
+    if(!snap.metadata.fromCache){clearTimeout(timer);sb.textContent=OFF?'📴 offline · '+snap.docs.length+' marcações no celular':'nuvem ok · '+snap.docs.length+' marcações';sb.classList.add('on');syncAll()}
+    render();
+  },e=>{clearTimeout(timer);sb.textContent='erro ao sincronizar';field={...field,...filaCampo};lastErr=true;updateWarn();render()});
+  DB.collection('diario').onSnapshot(snap=>{diario=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.data||'').localeCompare(a.data||''));if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#dic')))drawDiario()},()=>{});
+  DB.collection('extras').onSnapshot(snap=>{extras=snap.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{});
+  DB.collection('hist').orderBy('at','desc').limit(100).onSnapshot(snap=>{hist=snap.docs.map(d=>({id:d.id,...d.data()}));drawHist()},()=>{});
+  DB.doc('config/med').onSnapshot(sn=>{if(sn.exists){cfg=sn.data();if(cfg.parecer&&!parecerTxt)parecerTxt=cfg.parecer;render()}},()=>{});
+  DB.collection('fotos').onSnapshot(snap=>{fotos=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at||'').localeCompare(a.at||''));render()},()=>{});
+}
+const pendingW={},pendingV={};
+async function setField(k,obj){
+  const prev=field[k]||{};
+  field[k]={...prev,...obj,at:new Date().toISOString(),by:UID||prev.by||''};
+  if(obj.s!==undefined&&obj.s!==(prev.s||''))logHist(k,obj.s==='S'?(obj.src==='ia'?'marcou Executado (sugestão da foto)':'marcou Executado'):obj.s==='N'?(obj.src==='ia'?'marcou Não feito (sugestão da foto)':'marcou Não feito'):obj.s==='X'?'marcou Não precisa fazer':'desmarcou');
+  else if(obj.q!==undefined&&obj.q!==prev.q)logHist(k,'ajustou a quantidade executada',fmtQ(obj.q));
+  if(DB&&!canWrite){toast('Você só tem acesso de leitura.');return}
+  filaCampo[k]=field[k];saveFila();
+  if(!DB)return;
+  clearTimeout(pendingW[k]);
+  pendingW[k]=setTimeout(async()=>{const val=filaCampo[k];if(!val)return;try{await DB.doc('campo/k'+k).set(val);if(filaCampo[k]===val){delete filaCampo[k];saveFila()}lastErr=false}catch(e){if(e&&e.code==='invalid_argument'){console.warn('registro recusado',k,e);delete filaCampo[k];saveFila();toast('Esse registro não foi aceito pela nuvem. Marque de novo.')}else{lastErr=true;updateWarn()}}},obj.o!==undefined?700:0);
+}
+
+// ---------- status e regras ----------
+function status(p){
+  if((p.dsit||'').startsWith('SÓ NA MEMÓRIA')&&!p.bsit) return 'extra';
+  if(p.bsit==='SEM MEDIÇÃO NO PONTO'||(!p.bsit&&p.dsit==='NADA MEDIDO NO PONTO')) return 'sem';
+  if(p.pv>0.5) return 'falta';
+  return 'ok';
+}
+const LADO_TXT={LE:'Lado esquerdo',LD:'Lado direito',TR:'Transversal (atravessa a pista)'};
+const ladoTag=l=>l?`<span class="ltag" title="${esc(l.split('/').map(x=>LADO_TXT[x]||x).join(' e '))}">${esc(l)}</span>`:'';
+const FAMRX=[[/corpo|berço/i,/^BG/],[/boca/i,/^BOCA/],[/caixa/i,/^CC/],[/entrada|saída/i,/^EDA/],[/degrau/i,/^DSA-03/],[/calha/i,/^(DSA-0[12]|DSC)/],[/dissip/i,/^DEB/]];
+function ladoItem(p,nome){const f=FAMRX.find(([r])=>r.test(nome));if(!f||!p.dev)return '';const ls=[...new Set(p.dev.filter(v=>f[1].test(v.c)).map(v=>v.lado))].sort();return ls.join('/')}
+const SN={ok:'OK',falta:'Falta algo',sem:'Sem medição',extra:'Sem projeto'};
+const SC={ok:'var(--ok)',falta:'var(--falta)',sem:'var(--sem)',extra:'var(--extra)'};
+function autoAlerts(p){
+  const a=[];const g=(arr,k)=>(arr||[]).find(r=>r[0].startsWith(k))||[0,0,0,0];
+  const ent=g(p.d,'Entradas'),deg=g(p.d,'Descida em degraus'),cal=g(p.d,'Descida em calha'),dis=g(p.d,'Dissipadores');
+  const corpo=g(p.b,'Corpo Ø0,80'),cx=g(p.b,'Caixas');
+  if(ent[2]>0&&deg[2]+cal[2]===0&&deg[1]+cal[1]>0) a.push("Entrada/saída d'água medida, mas nenhuma descida d'água medida.");
+  if((deg[2]+cal[2])>0&&dis[1]>dis[2]) a.push("Descida medida sem o dissipador do projeto no pé.");
+  if(corpo[2]>0&&cx[1]>cx[2]) a.push("Corpo do bueiro medido, mas falta caixa coletora.");
+  if(corpo[1]>0&&corpo[2]>corpo[1]+1) a.push(`Corpo medido ${fmtQ(corpo[2]-corpo[1])} m acima do projeto: conferir comprimento real.`);
+  if((p.conf||'').includes('divergente')) a.push("Estaca da memória diverge do projeto (mais de 30 m): confirmar o ponto.");
+  return a;
+}
+
+fetch('data.json').then(r=>r.json()).then(d=>{D=d;init();connect()});
+
+function init(){
+  D.points.forEach(p=>{p.st=status(p);p.aa=autoAlerts(p);p.hasAlert=!!(p.balert||p.dalert)});
+  D.byP={};D.pend.forEach(x=>(D.byP[x.p]=D.byP[x.p]||[]).push(x));
+  $('#npts').textContent=D.points.length;
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+  document.querySelectorAll('#bnav button').forEach(b=>b.onclick=()=>irArea(b.dataset.a));
+  $('#busca').onsubmit=e=>{e.preventDefault();irEstaca($('#buscai').value);$('#buscai').blur()};
+  go('inicio',true);
+  $('#sheet').onclick=e=>{if(e.target.id==='sheet')closeP()};
+  $('#vx').onclick=()=>$('#viewer').classList.remove('on');$('#viewer').onclick=e=>{if(e.target.id==='viewer')$('#viewer').classList.remove('on')};
+  $('#fin').onchange=e=>{const fs=[...e.target.files];e.target.value='';if(openId!=null&&fs.length)addPhotos(openId,fs)};
+  drawMapF();drawPendF();drawPrio();drawAlertas();drawExtra();drawSaldo();drawSobre();
+  render();
+  const h=location.hash.slice(1);if(h&&$('#s-'+h))go(h,true);
+  window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if($('#s-'+h))go(h,true)});
+}
+let rT;
+function render(){if(!D)return;cancelAnimationFrame(rT);rT=requestAnimationFrame(()=>{
+  drawKpis();if(document.querySelector('#s-inicio.on'))drawInicio();if(!(document.activeElement&&document.activeElement.id==='ffq'))drawFF();if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#dic')))drawDiario();if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#disc')))drawDisc();drawMap();drawTrechos();drawPend();drawGal();{const a=document.activeElement;if(!(a&&a.closest&&a.closest('#linc')&&/INPUT/.test(a.tagName)))drawLin()}{const a=document.activeElement;if(!(a&&a.closest&&a.closest('#anc')&&/INPUT|TEXTAREA/.test(a.tagName)))drawAnalise()}{const a=document.activeElement;if(!(a&&a.closest&&a.closest('#medc')&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)))drawMed()}{const y=window.scrollY;drawUrb();if(document.querySelector('#s-urb.on'))window.scrollTo(0,y)}
+  if(openId!=null&&$('#sheet').classList.contains('on'))refreshPanelFotos();
+})}
+// ---------- navegação por áreas (Início · Campo · Medição · Relatórios) ----------
+const AREA_INI={inicio:'inicio',campo:'mapa',medicao:'med',relat:'analise'};
+const areaDe=t=>{const b=document.querySelector(`#tabs button[data-t="${t}"]`);return b?b.dataset.a:'inicio'};
+function go(t,noHash){const a=areaDe(t);
+  document.querySelectorAll('#tabs button').forEach(b=>{b.classList.toggle('on',b.dataset.t===t);b.style.display=b.dataset.a===a?'':'none'});
+  $('#tabs').classList.toggle('hide',a==='inicio');
+  document.querySelectorAll('#bnav button').forEach(b=>b.classList.toggle('on',b.dataset.a===a));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='s-'+t));
+  if(a!=='inicio')LS.set('fru-sub-'+a,t);
+  if(t==='inicio')drawInicio();
+  if(!noHash){try{history.replaceState(null,'','#'+t)}catch(e){}window.scrollTo(0,0)}}
+function irArea(a){const t=LS.get('fru-sub-'+a,AREA_INI[a]);go(document.querySelector(`#tabs button[data-t="${t}"]`)?t:AREA_INI[a])}
+function irEstaca(txt){const s=String(txt||'').trim().replace(',','.');if(!s)return;
+  const m=s.match(/^(\d+)(?:\s*\+\s*([\d.]+))?$/);if(!m){toast('Digite a estaca, ex.: 243 ou 243+06');return}
+  const e=+m[1]+(m[2]?+m[2]/20:0);let best=null,bd=1e9;
+  D.points.forEach(p=>{const n=estN(p.est);if(n==null)return;const d=Math.abs(n-e);if(d<bd){bd=d;best=p}});
+  if(!best){toast('Nenhum ponto encontrado.');return}
+  if(bd>2)toast(`Ponto mais próximo: ${best.est.split(' ')[0]}`);
+  const ord=[...D.points].filter(p=>estN(p.est)!=null).sort((a,b)=>estN(a.est)-estN(b.est)).map(p=>p.id);
+  openP(best.id,{ids:ord,label:'estacas'})}
+// ---------- OUTRAS DISCIPLINAS ----------
+let dsF={g:'',e:'',q:'',open:''};
+const estTxt=(i,f)=>i==null?'':`${i}+${fmtQ(f||0).padStart(2,'0')}`;
+function drawDisc(){const el=$('#disc');if(!el||!D||!D.ff)return;
+  const GR=D.ff.grupos.filter(g=>g!=='OBRAS DE ARTE CORRENTES E DRENAGEM'&&D.ff.itens.some(i=>i.g===g&&i.qc>0));
+  if(!dsF.g)dsF.g=GR[0];
+  const e=dsF.e.trim()?estN(dsF.e.includes('+')?dsF.e:dsF.e+'+0'):null,q=dsF.q.trim().toLowerCase();
+  const cobre=(l)=>{if(e==null)return true;const a=l[0]+(l[1]||0)/20,b=l[2]!=null?l[2]+(l[3]||0)/20:a;return e>=Math.min(a,b)-0.5&&e<=Math.max(a,b)+0.5};
+  let its=D.ff.itens.filter(i=>i.qc>0||i.qa>0);
+  its=e!=null?its.filter(i=>i.g!=='OBRAS DE ARTE CORRENTES E DRENAGEM'&&(D.disc[i.cod]||[]).some(cobre)):its.filter(i=>i.g===dsF.g);
+  if(q)its=its.filter(i=>i.cod.toLowerCase().includes(q)||i.s.toLowerCase().includes(q));
+  const ex=c=>extras.filter(x=>x.cod===c);
+  let h=`<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><input id="dse" inputmode="decimal" value="${esc(dsF.e)}" placeholder="Estaca (ex.: 120)" style="width:100%;min-width:0;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink)"><input id="dsq" value="${esc(dsF.q)}" placeholder="Buscar serviço" style="width:100%;min-width:0;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink)"></div>
+    ${e!=null?`<p style="font-size:13px;margin:0">Serviços medidos na estaca <b class="mono">${esc(dsF.e)}</b> (todas as disciplinas). <button class="chip" id="dsx">limpar</button></p>`:`<div class="filters" style="margin:0">${GR.map(g=>`<button class="chip ${dsF.g===g?'on':''}" data-dg="${esc(g)}">${esc(g.charAt(0)+g.slice(1).toLowerCase())}</button>`).join('')}</div>`}</div>`;
+  if(!its.length)h+='<p class="muted">Nenhum serviço encontrado.</p>';
+  its.sort((a,b)=>(b.vc-b.va)-(a.vc-a.va)).forEach(i=>{const ls=(D.disc[i.cod]||[]).filter(cobre),soma=(D.disc[i.cod]||[]).reduce((s,l)=>s+l[5],0),dif=D.disc[i.cod]&&Math.abs(soma-i.qa)>Math.max(0.5,0.02*Math.abs(i.qa)),x56=ex(i.cod),q56=x56.reduce((s,x)=>s+(+x.q||0),0),ab=dsF.open===i.cod;
+    const p=i.qc?i.qa/i.qc*100:0;
+    h+=`<div class="ffg"><button data-di="${esc(i.cod)}"><div class="cont"><span><span class="mono muted" style="font-size:11px">${esc(i.cod)}</span> <b style="font-size:13.5px">${esc(i.s.length>90?i.s.slice(0,90)+'…':i.s)}</b></span><span class="mono">${i.qc?p.toFixed(0)+'%':'–'}</span></div>
+      <div class="ffbar" style="height:6px"><div style="width:${Math.min(100,p)}%"></div><i style="left:${Math.min(100,p)}%;width:${i.qc?Math.min(100-Math.min(100,p),q56/i.qc*100):0}%"></i></div>
+      <span class="muted" style="font-size:12px">${fmtQ(i.qa)} de ${fmtQ(i.qc)} ${esc(i.u||'')} · saldo ${fmtQ(i.qc-i.qa)} · ${(D.disc[i.cod]||[]).length} linhas na memória${q56?` · <b style="color:var(--ok)">${fmtQ(q56)} na ${medN()}ª</b>`:''} ${ab?'▴':'▾'}</span></button>`;
+    if(ab){h+=`<div class="ffit">${dif?`<p class="al auto" style="margin:0 0 8px">A memória tem linhas que o sistema não conseguiu ler: as linhas abaixo somam ${fmtQ(soma)} ${esc(i.u||'')}, e o acumulado é ${fmtQ(i.qa)}. Confira na planilha.</p>`:''}
+        ${ls.length?`<div class="tw" style="max-height:340px;overflow:auto"><table><tr><th>De</th><th>Até</th><th>Lado</th><th class="n">Qtd.</th><th>Med.</th><th>Obs.</th></tr>${ls.slice(0,400).map(l=>`<tr><td class="mono">${estTxt(l[0],l[1])}</td><td class="mono">${estTxt(l[2],l[3])}</td><td>${esc(l[4])}</td><td class="n">${fmtQ(l[5])}</td><td class="mono">${l[6]}ª</td><td style="font-size:12px">${esc(l[7])}</td></tr>`).join('')}</table></div>${ls.length>400?`<p class="muted" style="font-size:12px">Mostrando 400 de ${ls.length} linhas. Use a busca por estaca.</p>`:''}`:'<p class="muted" style="font-size:13px">Nenhuma linha na memória'+(e!=null?' nessa estaca':'')+'.</p>'}
+        ${x56.length?`<p style="font-size:13px;margin:10px 0 4px"><b>Lançado para a ${medN()}ª</b></p><table>${x56.map(x=>`<tr><td class="mono">${estTxt(x.i,x.f)}${x.i2!=null?' → '+estTxt(x.i2,x.f2):''}</td><td>${esc(x.lado||'')}</td><td class="n">${fmtQ(x.q)} ${esc(i.u||'')}</td><td style="font-size:12px">${esc(x.obs||'')}</td><td>${DB?`<button class="chip" data-dx="${esc(x.id)}">remover</button>`:''}</td></tr>`).join('')}</table>`:''}
+        ${DB?`<form class="dsform" data-cod="${esc(i.cod)}" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;align-items:end">
+          <label style="font-size:12px;grid-column:span 2">Estaca inicial<input name="a" placeholder="120+05" value="${esc(dsF.e)}" style="width:100%;font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink)"></label>
+          <label style="font-size:12px;grid-column:span 2">Estaca final<input name="b" placeholder="opcional" style="width:100%;font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink)"></label>
+          <label style="font-size:12px">Lado<select name="lado" style="width:100%;font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)"><option></option><option>LE</option><option>LD</option><option>EIXO</option><option>LD/LE</option></select></label>
+          <label style="font-size:12px">Qtd. (${esc(i.u||'')})<input name="q" inputmode="decimal" required style="width:100%;font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink)"></label>
+          <label style="font-size:12px;grid-column:span 2">Observação<input name="obs" style="width:100%;font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink)"></label>
+          <button class="btn" style="grid-column:1/-1">➕ Lançar na ${medN()}ª medição</button></form>`:''}</div>`}
+    h+='</div>'});
+  el.innerHTML=h;
+  const deb=(id,k)=>{const n=$(id);n.oninput=()=>{dsF[k]=n.value;clearTimeout(drawDisc._t);drawDisc._t=setTimeout(()=>{drawDisc();const m=$(id);m.focus();m.setSelectionRange(m.value.length,m.value.length)},350)}};deb('#dse','e');deb('#dsq','q');
+  el.querySelectorAll('[data-dg]').forEach(b=>b.onclick=()=>{dsF.g=b.dataset.dg;dsF.open='';drawDisc()});
+  if($('#dsx'))$('#dsx').onclick=()=>{dsF.e='';drawDisc()};
+  el.querySelectorAll('[data-di]').forEach(b=>b.onclick=()=>{dsF.open=dsF.open===b.dataset.di?'':b.dataset.di;drawDisc()});
+  el.querySelectorAll('[data-dx]').forEach(b=>b.onclick=async()=>{if(!confirm('Remover este lançamento da próxima medição?'))return;try{await DB.doc('extras/'+b.dataset.dx).delete();toast('Removido.')}catch(er){toast('Não foi possível remover agora.')}});
+  el.querySelectorAll('.dsform').forEach(f=>f.onsubmit=async ev=>{ev.preventDefault();const cod=f.dataset.cod,pe=t=>{const m=String(t||'').trim().replace(',','.').match(/^(\d+)(?:\s*\+\s*([\d.]+))?$/);return m?[+m[1],m[2]?+m[2]:0]:null};
+    const a=pe(f.elements.a.value),b=f.elements.b.value.trim()?pe(f.elements.b.value):null,q=+String(f.elements.q.value).replace(',','.');
+    if(!a){toast('Informe a estaca inicial, ex.: 120+05');return}if(f.elements.b.value.trim()&&!b){toast('Estaca final inválida.');return}if(!(q>0)){toast('Informe a quantidade.');return}
+    const it=D.ff.itens.find(z=>z.cod===cod),soma=extras.filter(x=>x.cod===cod).reduce((s,x)=>s+(+x.q||0),0);
+    if(it&&it.qc&&it.qa+soma+q>it.qc*1.0001&&!confirm(`Com esse lançamento o item passa do contratado (${fmtQ(it.qc)} ${it.u}). Lançar mesmo assim?`))return;
+    const doc={cod,i:a[0],f:a[1],...(b?{i2:b[0],f2:b[1]}:{}),lado:f.elements.lado.value,q,obs:f.elements.obs.value||'',L:null,at:new Date().toISOString(),by:UID||'',disc:true};
+    try{await DB.collection('extras').add(doc);toast('Lançado na próxima medição.');logHist('x'+cod,'lançou na medição',`${cod} ${fmtQ(q)} ${it?it.u:''}`)}catch(er){toast('Sem sinal: tente de novo quando tiver sinal.')}});
+}
+// ---------- DIÁRIO DE OBRA (RDO) ----------
+const CLIMAS=['Bom','Nublado','Chuva leve','Chuva forte','Impraticável'];
+const hoje=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const fmtDia=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})}catch(e){return d}};
+const marcadosNoDia=d=>D.pend.filter(x=>{const f=field[x.k]||{};return f.s&&f.at&&(()=>{const t=new Date(f.at);return new Date(t-t.getTimezoneOffset()*6e4).toISOString().slice(0,10)===d})()});
+function diaDoc(d){return LS.get('fru-dia-rasc-'+d,null)||diario.find(x=>x.data===d)||{data:d,climaM:'Bom',climaT:'Bom',equipe:'',equip:'',ativ:'',ocor:'',fotos:[]}}
+function drawDiario(){const el=$('#dic');if(!el||!D)return;const d=diaSel||hoje(),x=diaDoc(d),salvo=diario.some(z=>z.data===d);
+  const mk=marcadosNoDia(d),fs=fotos.filter(f=>{const t=new Date(f.at||0);return new Date(t-t.getTimezoneOffset()*6e4).toISOString().slice(0,10)===d});
+  const sel=(n,v)=>`<select name="${n}" style="width:100%;font:inherit;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)">${CLIMAS.map(c=>`<option ${c===v?'selected':''}>${c}</option>`).join('')}</select>`;
+  const ta=(n,v,ph,rows)=>`<textarea name="${n}" rows="${rows||3}" placeholder="${ph}">${esc(v||'')}</textarea>`;
+  el.innerHTML=`<div class="card"><div class="cont"><b style="font-size:15px">Diário de obra</b><input type="date" id="diad" value="${d}" style="font:inherit;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)"></div>
+    <p class="muted" style="font-size:12px;margin:4px 0 10px">${fmtDia(d)} · ${LS.get('fru-dia-rasc-'+d,null)?'<span style="color:#b26a00">alterações não salvas</span>':salvo?'<span style="color:var(--ok)">salvo</span>':'ainda não salvo'}</p>
+    <form id="diaf" style="display:grid;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:13px">Tempo de manhã${sel('climaM',x.climaM)}</label><label style="font-size:13px">Tempo à tarde${sel('climaT',x.climaT)}</label></div>
+      <label style="font-size:13px">Equipe (função e quantidade)${ta('equipe',x.equipe,'Ex.: Encarregado 1, Pedreiro 3, Servente 6')}</label>
+      <label style="font-size:13px">Equipamentos${ta('equip',x.equip,'Ex.: Retroescavadeira 1, Caminhão basculante 2',2)}</label>
+      <label style="font-size:13px">Atividades do dia${ta('ativ',x.ativ,'O que foi executado e onde (estacas)',4)}</label>
+      ${mk.length?`<div class="ia" style="margin:0"><b>Conferido no sistema neste dia (${mk.length})</b><br><span style="font-size:12px">${mk.slice(0,12).map(z=>`${esc(P(z.p).est.split(' ')[0])} ${esc(nomeOf(z))}: ${marked(z)==='S'?'feito':marked(z)==='N'?'não feito':'não precisa'}`).join('<br>')}${mk.length>12?`<br>e mais ${mk.length-12}`:''}</span><br><button type="button" class="chip" id="diaimp" style="margin-top:6px">Copiar para as atividades</button></div>`:''}
+      <label style="font-size:13px">Ocorrências (paralisações, chuva, visitas, acidentes)${ta('ocor',x.ocor,'Se não houve, deixe em branco',3)}</label>
+      <div><b style="font-size:13px">Fotos do dia</b> <span class="muted" style="font-size:12px">${(x.fotos||[]).length} do diário${fs.length?` + ${fs.length} tiradas nos pontos`:''}</span>
+        <div class="thumbs">${(x.fotos||[]).map((f,i)=>`<div class="ph" style="width:110px"><img src="${esc(f.url)}" alt="Foto do diário"><div><button type="button" class="chip" data-rmf="${i}">remover</button></div></div>`).join('')}</div>
+        <label class="btn ghost" style="display:inline-block;cursor:pointer;margin-top:4px">📷 Adicionar foto ao diário<input type="file" id="diafoto" accept="image/*" multiple hidden></label></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">Salvar o dia</button>${DL?'<button type="button" class="btn ghost" id="diapdf">📄 RDO em PDF</button>':''}</div>
+    </form></div>
+    <div class="card"><b>Dias registrados</b>${diario.length?`<table style="margin-top:6px">${diario.slice(0,60).map(z=>`<tr data-d="${z.data}" style="cursor:pointer${z.data===d?';background:color-mix(in srgb,var(--acc) 8%,transparent)':''}"><td class="mono">${z.data.split('-').reverse().join('/')}</td><td>${esc(z.climaM)} / ${esc(z.climaT)}</td><td class="muted" style="font-size:12px">${esc((z.ativ||'').slice(0,60))}${(z.ativ||'').length>60?'…':''}</td></tr>`).join('')}</table>`:'<p class="muted" style="font-size:13px">Nenhum dia salvo ainda.</p>'}</div>`;
+  const f=$('#diaf');const ler=()=>{const o={...x,data:d};['climaM','climaT','equipe','equip','ativ','ocor'].forEach(k=>o[k]=f.elements[k].value);return o};
+  f.oninput=()=>LS.set('fru-dia-rasc-'+d,ler());
+  $('#diad').onchange=e=>{diaSel=e.target.value||hoje();drawDiario()};
+  el.querySelectorAll('tr[data-d]').forEach(t=>t.onclick=()=>{diaSel=t.dataset.d;drawDiario();window.scrollTo(0,0)});
+  if($('#diaimp'))$('#diaimp').onclick=()=>{const a=f.elements.ativ;a.value=(a.value?a.value+'\n':'')+mk.filter(z=>marked(z)==='S').map(z=>`${P(z.p).est.split(' ')[0]} – ${nomeOf(z)}`).join('\n');LS.set('fru-dia-rasc-'+d,ler())};
+  el.querySelectorAll('[data-rmf]').forEach(b=>b.onclick=()=>{const o=ler();o.fotos=(o.fotos||[]).filter((_,i)=>i!==+b.dataset.rmf);LS.set('fru-dia-rasc-'+d,o);drawDiario()});
+  $('#diafoto').onchange=async e=>{const fl=[...e.target.files];e.target.value='';if(!ASSETS){toast('Fotos do diário precisam da nuvem.');return}
+    const o=ler();o.fotos=o.fotos||[];for(const fi of fl){try{toast('Enviando foto…');const bl=await shrink(fi,1600);const ex=await exifInfo(fi);const up=await ASSETS.upload(bl);o.fotos.push({asset:up.id,url:up.url,at:ex.date||new Date(fi.lastModified||Date.now()).toISOString(),...(ex.gps?{geo:ex.gps}:{})})}catch(er){toast('Sem sinal: não consegui enviar a foto agora.')}}
+    LS.set('fru-dia-rasc-'+d,o);drawDiario()};
+  f.onsubmit=async e=>{e.preventDefault();const o=ler();delete o.id;o.by=UID||'';o.atualizado=new Date().toISOString();
+    if(!DB){toast('Sem nuvem: o rascunho fica neste aparelho.');return}
+    try{await DB.doc('diario/d'+d).set(o);try{localStorage.removeItem('fru-dia-rasc-'+d)}catch(er){}toast('Dia salvo.');logHist('dia'+d,'salvou o diário',fmtDia(d))}catch(er){toast('Sem sinal: o rascunho ficou no aparelho. Salve de novo quando tiver sinal.')}};
+  if($('#diapdf'))$('#diapdf').onclick=()=>rdoPDF(ler(),mk,fs);
+}
+async function rdoPDF(x,mk,fs){if(!window.jspdf){toast('Gerador de PDF indisponível.');return}
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,M=12;let y=24;
+  cqHeader(doc,'Relatório Diário de Obra (RDO)',`ES-475 Castelo–Fruteiras · Contrato 007/2014 · ${fmtDia(x.data)}`);
+  doc.autoTable({startY:y,margin:{left:M,right:M},theme:'grid',styles:{fontSize:9,cellPadding:1.8},headStyles:{fillColor:NAVY},head:[['Data','Tempo de manhã','Tempo à tarde']],body:[[x.data.split('-').reverse().join('/'),x.climaM,x.climaT]]});
+  y=doc.lastAutoTable.finalY+5;
+  const bloco=(tit,txt)=>{doc.autoTable({startY:y,margin:{left:M,right:M},theme:'grid',styles:{fontSize:9,cellPadding:2,valign:'top'},headStyles:{fillColor:NAVY},head:[[tit]],body:[[pt(txt||'—')]]});y=doc.lastAutoTable.finalY+4};
+  bloco('Equipe',x.equipe);bloco('Equipamentos',x.equip);bloco('Atividades executadas',x.ativ);
+  if(mk.length){doc.autoTable({startY:y,margin:{left:M,right:M},theme:'grid',styles:{fontSize:8.5,cellPadding:1.5},headStyles:{fillColor:NAVY},head:[['Estaca','Serviço conferido no dia','Situação']],body:mk.map(z=>[P(z.p).est.split(' ')[0],pt(nomeOf(z)),marked(z)==='S'?'Feito':marked(z)==='N'?'Não feito':'Não precisa'])});y=doc.lastAutoTable.finalY+4}
+  bloco('Ocorrências',x.ocor);
+  const imgs=[...(x.fotos||[]).map(f=>f.url),...fs.map(f=>f.url||'/_blob/'+f.asset)].slice(0,6);
+  if(imgs.length){if(y>200){doc.addPage();y=20}doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30);doc.text('Fotos do dia',M,y);y+=3;
+    const gw=(W-2*M-8)/3,gh=gw*0.75;let i=0;for(const u of imgs){try{const im=await imgData(u,900);if(y+gh>282){doc.addPage();y=20}addImgFit(doc,im,M+(i%3)*(gw+4),y,gw,gh,true)}catch(e){}i++;if(i%3===0)y+=gh+4}if(i%3)y+=gh+4}
+  if(y>255){doc.addPage();y=30}y=Math.max(y+14,250);doc.setDrawColor(120);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60);
+  [['Responsável da contratada',M],['Fiscalização',W/2+4]].forEach(([t,xx])=>{doc.line(xx,y,xx+80,y);doc.text(t,xx,y+5)});
+  try{await DL.save({filename:`RDO Fruteiras ${x.data}.pdf`,data:doc.output('blob')})}catch(e){if(e&&e.code!=='declined')toast('Não foi possível baixar.')}
+}
+// ---------- PAINEL FÍSICO-FINANCEIRO ----------
+let ffF={q:'',f:'todos',open:''};
+function lancar56(){const m={};D.pend.filter(x=>marked(x)==='S').forEach(x=>{const c=codOf(x);m[c]=(m[c]||0)+qtyOf(x)});extras.forEach(x=>{m[x.cod]=(m[x.cod]||0)+(+x.q||0)});return m}
+function drawFF(){if(!D||!D.ff)return;const el=$('#ffc');if(!el)return;
+  const IT=D.ff.itens,L56=lancar56();const v56=c=>(L56[c]||0)*((IT.find(i=>i.cod===c)||{}).pu||0);
+  const vc=IT.reduce((s,i)=>s+i.vc,0),va=IT.reduce((s,i)=>s+i.va,0),vm=IT.reduce((s,i)=>s+i.vm,0),n56=Object.keys(L56).reduce((s,c)=>s+v56(c),0);
+  const pct=v=>vc?Math.round(v/vc*1000)/10:0,pc=(a,b)=>b?a/b*100:0;
+  const q=ffF.q.trim().toLowerCase();
+  const filt=i=>{if(q&&!(i.cod.toLowerCase().includes(q)||i.s.toLowerCase().includes(q)))return false;
+    if(ffF.f==='saldo')return i.qc-i.qa>0.001;if(ffF.f==='estourado')return i.qc>0?i.qa>i.qc*1.0001:i.qa>0;if(ffF.f==='zero')return i.qc>0&&i.qa<=0;if(ffF.f==='56')return (L56[i.cod]||0)>0;return true};
+  let h=`<div class="hero"><div class="cont"><b style="font-size:16px">Contrato 007/2014 · até a ${D.ff.med}ª medição</b><span class="mono" style="font-size:18px">${pct(va).toLocaleString('pt-BR')}%</span></div>
+    <div class="ffbar"><div style="width:${Math.min(100,pct(va))}%"></div><i style="left:${Math.min(100,pct(va))}%;width:${Math.min(100-Math.min(100,pct(va)),pct(n56))}%"></i></div>
+    <div class="prog" style="margin-top:8px"><div><b class="mono">${fmtR(vc)}</b><br><span class="muted" style="font-size:12px">contratado</span></div><div><b class="mono">${fmtR(va)}</b><br><span class="muted" style="font-size:12px">medido acumulado</span></div><div><b class="mono">${fmtR(vc-va)}</b><br><span class="muted" style="font-size:12px">saldo do contrato</span></div><div><b class="mono" style="color:var(--ok)">${fmtR(n56)}</b><br><span class="muted" style="font-size:12px">em preparo na ${D.ff.med+1}ª</span></div></div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0">Na ${D.ff.med}ª foram medidos ${fmtR(vm)}. Azul = medido; verde = o que já está marcado para a ${D.ff.med+1}ª.</p></div>
+  <div class="card" style="padding:10px"><input id="ffq" value="${esc(ffF.q)}" placeholder="Buscar item por código ou nome" style="width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);margin-bottom:8px">
+   <div class="filters" style="margin:0">${[['todos','Todos'],['saldo','Com saldo'],['zero','Nada medido'],['estourado','Acima do contratado'],['56','Na '+(D.ff.med+1)+'ª']].map(([k,l])=>`<button class="chip ${ffF.f===k?'on':''}" data-ff="${k}">${l}</button>`).join('')}${DL?'<button class="chip" id="ffxl">⬇ Excel</button>':''}</div></div>`;
+  D.ff.grupos.forEach(g=>{const its=IT.filter(i=>i.g===g),gc=its.reduce((s,i)=>s+i.vc,0),ga=its.reduce((s,i)=>s+i.va,0),g56=its.reduce((s,i)=>s+v56(i.cod),0),vis=its.filter(filt);if(!vis.length)return;
+    const aberto=ffF.open===g||q||ffF.f!=='todos';
+    h+=`<div class="ffg"><button data-g="${esc(g)}"><div class="row cont"><b style="font-size:14px">${esc(g.charAt(0)+g.slice(1).toLowerCase())}</b><span class="mono">${pc(ga,gc).toFixed(0)}%</span></div>
+      <div class="ffbar"><div style="width:${Math.min(100,pc(ga,gc))}%"></div><i style="left:${Math.min(100,pc(ga,gc))}%;width:${Math.min(100-Math.min(100,pc(ga,gc)),pc(g56,gc))}%"></i></div>
+      <span class="muted" style="font-size:12px">${fmtR(ga)} de ${fmtR(gc)} · saldo ${fmtR(gc-ga)} · ${vis.length} itens ${aberto?'▴':'▾'}</span></button>`+
+      (aberto?vis.sort((a,b)=>(b.vc-b.va)-(a.vc-a.va)).map(i=>{const p=pc(i.qa,i.qc),est=i.qc>0?i.qa>i.qc*1.0001:i.qa>0,q56=L56[i.cod]||0;
+        return `<div class="ffit"><div class="row"><span><span class="mono muted" style="font-size:11px">${esc(i.cod)}</span> ${esc(i.s.length>110?i.s.slice(0,110)+'…':i.s)}</span><b class="mono" style="white-space:nowrap;${est?'color:var(--sem)':''}">${i.qc?p.toFixed(0)+'%':'–'}</b></div>
+          <div class="ffbar" style="height:6px"><div style="width:${Math.min(100,p)}%;${est?'background:var(--sem)':''}"></div><i style="left:${Math.min(100,p)}%;width:${i.qc?Math.min(100-Math.min(100,p),q56/i.qc*100):0}%"></i></div>
+          <span class="muted" style="font-size:12px">${fmtQ(i.qa)} de ${fmtQ(i.qc)} ${esc(i.u||'')} · saldo ${fmtQ(i.qc-i.qa)} ${esc(i.u||'')} (${fmtR(i.vc-i.va)})${i.qm?` · ${D.ff.med}ª: ${fmtQ(i.qm)}`:''}${q56?` · <b style="color:var(--ok)">${D.ff.med+1}ª: ${fmtQ(q56)}</b>`:''}${est?' · <b style="color:var(--sem)">acima do contratado</b>':''}${q56&&i.qc-i.qa-q56<-0.001?' · <b style="color:var(--sem)">sem saldo para a próxima</b>':''}</span></div>`}).join(''):'')+'</div>'});
+  el.innerHTML=h;
+  const qi=$('#ffq');qi.oninput=()=>{ffF.q=qi.value;clearTimeout(drawFF._t);drawFF._t=setTimeout(()=>{drawFF();const n=$('#ffq');n.focus();n.setSelectionRange(n.value.length,n.value.length)},250)};
+  el.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>{ffF.f=b.dataset.ff;drawFF()});
+  el.querySelectorAll('.ffg>button').forEach(b=>b.onclick=()=>{ffF.open=ffF.open===b.dataset.g?'':b.dataset.g;drawFF()});
+  if($('#ffxl'))$('#ffxl').onclick=async()=>{const rows=IT.map(i=>({'Grupo':i.g,'Subgrupo':i.sg||'','Código':i.cod,'Serviço':i.s,'Un.':i.u,'Preço unit. (R$)':i.pu,'Qtd. contratada':i.qc,'Qtd. acumulada':i.qa,'% executado':i.qc?Math.round(i.qa/i.qc*1000)/10:'','Saldo (qtd.)':Math.round((i.qc-i.qa)*1000)/1000,'Valor contratado (R$)':i.vc,'Valor acumulado (R$)':i.va,'Saldo (R$)':Math.round((i.vc-i.va)*100)/100,[`Qtd. ${D.ff.med}ª`]:i.qm,[`Qtd. em preparo ${D.ff.med+1}ª`]:L56[i.cod]||0}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Físico-financeiro');
+    try{await DL.save({filename:`Fisico-financeiro Fruteiras ${D.ff.med}a.xlsx`,data:new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})])})}catch(e){if(e&&e.code!=='declined')toast('Não foi possível baixar.')}};
+}
+function drawInicio(){if(!D)return;
+  const tot=D.pend.length,conf=D.pend.filter(x=>marked(x)).length,pct=tot?Math.round(conf/tot*100):0;
+  const lan=D.pend.filter(x=>marked(x)==='S').reduce((s,x)=>s+execV(x),0)+extras.reduce((t,x)=>t+(+x.q)*((D.itens[x.cod]||{}).pu||0),0);
+  const fila=Object.keys(filaCampo||{}).length+(filaFotos||[]).length+(filaHist||[]).length;
+  const ult=LS.get('fru-ult',null),pu=ult!=null?P(ult):null;
+  const rot=D.points.filter(p=>!vistoriado(p)&&p.pv>0).sort((a,b)=>b.pv-a.pv).slice(0,5);
+  $('#inic1').innerHTML=`<div class="hero"><div class="cont"><b style="font-size:16px">Vistoria da drenagem</b><span class="mono" style="font-size:18px">${pct}%</span></div>
+    <div class="pbar"><div style="width:${pct}%"></div></div>
+    <span class="muted" style="font-size:13px">${conf} de ${tot} itens conferidos · <b style="color:var(--ok)">${fmtR(lan)}</b> pronto para lançar na ${medN()}ª medição${fila?` · <b style="color:#b26a00">${fila} aguardando envio</b>`:''}</span></div>
+    ${pu?`<div class="card cont"><span><span class="muted" style="font-size:12px">Continuar de onde parou</span><br><b class="mono">${esc(pu.est.split(' ')[0])}</b> <span class="muted" style="font-size:12px">${esc(pu.bg||'')}</span></span><button class="btn" id="icont">Abrir</button></div>`:''}`;
+  $('#inic').innerHTML=`<div class="acts">
+      <button class="act" data-go="mapa">🗺️ Mapa da rodovia<span>Pontos por estaca</span></button>
+      <button class="act" data-go="pend">📋 Lista de itens<span>Filtrar e marcar</span></button>
+      <button class="act" data-go="med">📄 Memória da ${medN()}ª<span>Baixar no modelo DER</span></button>
+      <button class="act" data-go="analise">⎙ Relatório final<span>Croquis com fotos</span></button>
+      <button class="act" data-go="diario">📝 Diário de hoje<span>Clima, equipe, atividades</span></button>
+      <button class="act" data-go="ff">📊 Físico-financeiro<span>Contrato inteiro</span></button>
+      <button class="act" data-go="disc">🛣️ Outras disciplinas<span>Busca por estaca</span></button>
+      <button class="act" data-go="fotos">📷 Fotos<span>Todas as fotos de campo</span></button></div>
+    <div class="card"><b>Roteiro de hoje</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Os 5 pontos de maior valor ainda sem vistoria. Toque para abrir e use “Próximo” para seguir.</p>
+    ${rot.length?`<table>${rot.map(p=>`<tr data-id="${p.id}" style="cursor:pointer"><td class="mono">${esc(p.est.split(' ')[0])}</td><td>${esc(p.bg||'–')}</td><td><span class="tag t-${p.st}">${SN[p.st]}</span></td><td class="n">${fmtR(p.pv)}</td></tr>`).join('')}</table>`:'<p class="muted">Todos os pontos com valor pendente já foram vistoriados.</p>'}</div>`;
+  if($('#icont'))$('#icont').onclick=()=>openP(pu.id);
+  $('#inic').querySelectorAll('.act').forEach(b=>b.onclick=()=>go(b.dataset.go));
+  $('#inic').querySelectorAll('tr[data-id]').forEach(t=>t.onclick=()=>openP(+t.dataset.id,{ids:rot.map(p=>p.id),label:'roteiro de hoje'}));
+}
+
+const fotosDe=id=>fotos.filter(f=>f.p===id);
+const temFoto=id=>fotosDe(id).length||filaFotos.some(r=>r.p===id);
+const marked=x=>(field[x.k]||{}).s||'';
+
+function drawKpis(){
+  const tot=D.pend.reduce((s,x)=>s+x.v,0);
+  const lan=D.pend.filter(x=>marked(x)==='S').reduce((s,x)=>s+execV(x),0);
+  const conf=D.pend.filter(x=>marked(x)).length;
+  const pf=new Set(fotos.map(f=>f.p)).size;
+  $('#kpis').innerHTML=`
+   <div class="kpi" data-go="pend"><b>${fmtR(tot)}</b><span><i style="background:var(--falta)"></i>pendente pelo projeto</span></div>
+   <div class="kpi" data-go="analise"><b style="color:var(--ok)">${fmtR(lan)}</b><span><i style="background:var(--ok)"></i>executado, a lançar</span></div>
+   <div class="kpi" data-go="analise"><b>${conf}/${D.pend.length}</b><span>itens conferidos em campo</span></div>
+   <div class="kpi" data-go="fotos"><b>${pf}/${D.points.length}</b><span>pontos com foto (${fotos.length} fotos)</span></div>`;
+  document.querySelectorAll('.kpi').forEach(k=>k.onclick=()=>go(k.dataset.go));
+}
+
+// ---------- MAPA ----------
+let mapF='todos';
+function drawMapF(){
+  const opts=[['todos','Todos'],['sem','Sem medição'],['falta','Falta algo'],['ok','OK'],['extra','Sem projeto'],['alerta','Com alerta'],['foto','Com foto'],['naovist','Não vistoriados'],['lin','Lineares sem medição']];
+  $('#mapf').innerHTML=opts.map(([k,l])=>`<button class="chip ${mapF===k?'on':''}" data-k="${k}">${l}</button>`).join('');
+  $('#mapf').querySelectorAll('button').forEach(b=>b.onclick=()=>{mapF=b.dataset.k;drawMapF();drawMap()});
+}
+const vistoriado=p=>temFoto(p.id)||(D.byP[p.id]||[]).some(x=>marked(x));
+function vis(p){if(mapF==='todos'||mapF==='lin')return true;if(mapF==='alerta')return p.hasAlert||p.aa.length;
+  if(mapF==='foto')return fotosDe(p.id).length>0;if(mapF==='naovist')return p.pv>0&&!vistoriado(p);return p.st===mapF}
+function drawMap(){
+  const W=Math.min(1060,document.querySelector('main').clientWidth-26),pad=34,rowH=58,per=W<600?50:100;
+  const isInt=p=>p.inter,main=D.points.filter(p=>p.n<3000),ramal=D.points.filter(p=>p.n>=5000&&p.n<5100),inter=D.points.filter(isInt);
+  const rows=Math.ceil(650/per),rmin=5000,rmax=5030;
+  const H=rows*rowH+2*rowH+40,maxV=Math.max(...D.points.map(p=>p.pv));
+  const x=(n,a,b)=>pad+(n-a)/(b-a)*(W-pad-10),rad=p=>4+Math.sqrt(p.pv/maxV)*9;
+  const withF=new Set(fotos.map(f=>f.p).concat(filaFotos.map(r=>r.p)));
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Diagrama linear da rodovia por estaca">`;
+  const mspN=D.msp.map(r=>estN(r[2])).filter(n=>n!=null);
+  const row=(y,a,b,label,pts)=>{
+    s+=`<text class="row-label" x="0" y="${y+4}">${label}</text><line x1="${pad}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--road)" stroke-width="5" stroke-linecap="round"/><line x1="${pad}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--bg)" stroke-width="1" stroke-dasharray="6 6"/>`;
+    for(let e=Math.ceil(a/10)*10;e<=b;e+=10){const xx=x(e,a,b);s+=`<line x1="${xx}" x2="${xx}" y1="${y+6}" y2="${y+(e%50?9:13)}" stroke="var(--mut)"/>`;if(e%50===0)s+=`<text x="${xx}" y="${y+24}" font-size="9" fill="var(--mut)" text-anchor="middle">${e}</text>`}
+    if(D.urb){D.urb.perims.forEach(pm=>{const lo=Math.max(a,pm.de),hi=Math.min(b,pm.ate);if(lo<hi)s+=`<rect class="urbb" data-per="${esc(pm.nome)}" x="${x(lo,a,b)}" y="${y-5}" width="${x(hi,a,b)-x(lo,a,b)}" height="10" fill="var(--acc)" opacity=".22" style="cursor:pointer"/>`});
+      Object.entries(D.urb.pvst).forEach(([pv,n])=>{if(n>=a&&n<b){const xx=x(n,a,b);s+=`<path class="urbb" data-per="pv" d="M${xx} ${y+12} l3 3 l-3 3 l-3 -3z" fill="var(--acc)" style="cursor:pointer"/>`}})}
+    if(mapF==='lin'&&D.lin)D.lin.trechos.forEach(t=>{const lo=Math.max(a,t.a),hi=Math.min(b,t.b);if(lo>=hi)return;const st=lm(t),yy=y+(t.lado==='LE'?-16:16)+(['DP-02','MFC-05','STC-04','SCA 70/15'].includes(t.item)?0:(t.lado==='LE'?-5:5));
+      s+=`<line x1="${x(lo,a,b)}" x2="${x(hi,a,b)}" y1="${yy}" y2="${yy}" stroke="${st==='S'?'var(--ok)':st==='N'?'var(--sem)':st==='X'?'#999':LCOR[t.item]}" stroke-width="3" stroke-linecap="round" opacity=".85"/>`});
+    mspN.filter(n=>n>=a&&n<b).forEach(n=>{const xx=x(n,a,b);s+=`<line x1="${xx}" x2="${xx}" y1="${y-14}" y2="${y-7}" stroke="var(--extra)" stroke-width="2" opacity=".7"/>`});
+    pts.forEach(p=>{const xx=x(p.n,a,b),r=rad(p),o=vis(p)?1:.12;
+      const allS=(D.byP[p.id]||[]).length&&(D.byP[p.id]||[]).every(z=>marked(z));
+      s+=`<g class="pt" data-id="${p.id}" opacity="${o}"><circle cx="${xx}" cy="${y}" r="${r}" fill="${SC[p.st]}" stroke="${allS?'var(--ink)':'var(--card)'}" stroke-width="${allS?2.5:1.5}"/>`;
+      if(p.hasAlert)s+=`<path d="M${xx} ${y-r-9} l4 7 h-8z" fill="var(--sem)"/>`;
+      if(withF.has(p.id))s+=`<rect x="${xx-4}" y="${y+r+2}" width="8" height="6" rx="1.5" fill="var(--acc)"/>`;
+      s+=`<circle cx="${xx}" cy="${y}" r="${Math.max(r,11)}" fill="transparent"/></g>`});
+  };
+  for(let i=0;i<rows;i++){const a=i*per,b=a+per;row(22+i*rowH,a,b,`${a}`,main.filter(p=>p.n>=a&&p.n<b))}
+  row(22+rows*rowH,rmin,rmax,'5000',ramal);
+  s+=`<text x="${pad}" y="${22+rows*rowH-14}" font-size="10" fill="var(--mut)">Trecho 5000+ (folha 46)</text>`;
+  {const y=22+(rows+1)*rowH+16;s+=`<text x="${pad}" y="${y-16}" font-size="10" fill="var(--mut)">Interseções (Int. 01 Ubá · Int. 05 Fruteiras)</text><text class="row-label" x="0" y="${y+4}">Int.</text><line x1="${pad}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--road)" stroke-width="5" stroke-linecap="round" stroke-dasharray="14 6"/>`;
+   inter.forEach((p,i)=>{const xx=pad+12+i*(W-pad-34)/Math.max(1,inter.length-1),r=rad(p),o=vis(p)?1:.12;
+     s+=`<g class="pt" data-id="${p.id}" opacity="${o}"><circle cx="${xx}" cy="${y}" r="${r}" fill="${SC[p.st]}" stroke="var(--card)" stroke-width="1.5"/>${p.hasAlert?`<path d="M${xx} ${y-r-9} l4 7 h-8z" fill="var(--sem)"/>`:''}${withF.has(p.id)?`<rect x="${xx-4}" y="${y+r+2}" width="8" height="6" rx="1.5" fill="var(--acc)"/>`:''}<text x="${xx}" y="${y+24}" font-size="9" fill="var(--mut)" text-anchor="middle">${Math.floor(p.n)}</text><circle cx="${xx}" cy="${y}" r="${Math.max(r,11)}" fill="transparent"/></g>`})}
+  s+='</svg>';
+  $('#map').innerHTML=s;$('#map').querySelectorAll('.pt').forEach(g=>g.onclick=()=>openP(+g.dataset.id,{ids:D.points.filter(vis).filter(p=>!p.inter).concat(D.points.filter(p=>p.inter&&vis(p))).map(p=>p.id),label:mapF==='todos'?'mapa':'mapa – filtro'}));
+  $('#map').querySelectorAll('.urbb').forEach(g=>g.onclick=()=>{go('urb');const el=document.getElementById('per-'+slug(g.dataset.per));if(el)el.scrollIntoView({behavior:'smooth'})});
+}
+window.addEventListener('resize',()=>{clearTimeout(window._r);window._r=setTimeout(()=>D&&drawMap(),200)});
+const trechoDe=p=>p.inter?'Int.':p.n>=5000?'5000+':String(Math.floor(p.n/50)*50);
+const trSort=(a,b)=>isNaN(a)-isNaN(b)||(isNaN(a)&&isNaN(b)?a.localeCompare(b):a-b);
+function drawTrechos(){
+  const tr={},ok={};D.pend.forEach(x=>{const k=trechoDe(P(x.p));tr[k]=(tr[k]||0)+x.v;if(marked(x))ok[k]=(ok[k]||0)+x.v});
+  const mx=Math.max(...Object.values(tr));
+  $('#trechos').innerHTML='<table>'+Object.keys(tr).sort(trSort).map(k=>
+   `<tr><td class="mono" style="width:90px">${isNaN(k)?k:k+'–'+(+k+50)}</td><td><div class="bar" style="position:relative"><div style="width:${tr[k]/mx*100}%"></div><div style="position:absolute;left:0;top:0;width:${(ok[k]||0)/mx*100}%;background:var(--ok)"></div></div></td><td class="n" style="width:100px">${fmtR(tr[k])}</td></tr>`).join('')+'</table><p class="muted" style="font-size:12px;margin:6px 0 0">Verde = parte já conferida em campo.</p>';
+}
+
+// ---------- PAINEL DO PONTO ----------
+let navCtx=null;
+function openP(id,ctx){LS.set('fru-ult',id);
+  if(ctx)navCtx=ctx;
+  if(!navCtx||!navCtx.ids.includes(id))navCtx={ids:D.points.map(p=>p.id),label:'todas as estacas'};
+  const same=openId===id&&$('#sheet').classList.contains('on');
+  openId=id;const p=P(id),pend=D.byP[id]||[];
+  const tbl=(t,arr)=>arr&&arr.some(r=>r[1]||r[2])?`<h3 style="font-size:14px;margin:14px 0 4px">${t}</h3><table><tr><th>Item</th><th class="n">Projeto</th><th class="n">Medido</th><th class="n">Falta</th></tr>`+
+    arr.filter(r=>r[1]||r[2]).map(r=>`<tr><td>${r[0]}${ladoTag(ladoItem(p,r[0]))}</td><td class="n">${fmtQ(r[1])}</td><td class="n">${fmtQ(r[2])}</td><td class="n" style="color:${r[3]>0?'var(--sem)':'inherit'}">${r[3]>0?fmtQ(r[3]):'–'}</td></tr>`).join('')+'</table>':'';
+  const ni=navCtx.ids.indexOf(id),prevId=navCtx.ids[ni-1],nextId=navCtx.ids[ni+1];
+  const navBar=`<div class="navb"><button class="btn ghost" data-nav="${prevId??''}" ${prevId==null?'disabled':''}>◀ Anterior</button><span class="muted" style="font-size:12px;text-align:center">${ni+1} de ${navCtx.ids.length}<br>${esc(navCtx.label)}</span><button class="btn" data-nav="${nextId??''}" ${nextId==null?'disabled':''}>Próxima ▶</button></div>`;
+  let h=`<button class="x" onclick="closeP()" aria-label="Fechar">×</button>
+   <small class="muted">PONTO ${p.id} · FOLHA ${esc(p.folha)}${p.croqui?' · CROQUI PÁG. '+p.croqui:''}</small>
+   <h2 class="mono">Est. ${esc(p.est)}</h2>
+   <div style="margin:6px 0">${p.bg?esc(p.bg)+' · ':''}<span class="tag t-${p.st}">${SN[p.st]}</span>${p.lado?' · '+esc(p.lado):''}</div>
+   <div class="muted" style="font-size:12px">${p.bsit?'Bueiro: '+esc(p.bsit)+' · ':''}${p.dsit?'Descidas: '+esc(p.dsit):''}${p.meds?'<br>Lançado nas medições: '+esc(p.meds):''}${p.conf?'<br>Confiança: '+esc(p.conf):''}</div>
+   ${p.pdf?`<div class="ia" style="margin-top:10px"><b>Do PDF do projeto:</b> ${esc(p.pdf)}</div>`:''}
+   <h3 style="font-size:14px;margin:16px 0 4px;display:flex;justify-content:space-between;align-items:center">Fotos de campo <button class="btn" id="addf">📷 Adicionar foto</button></h3>
+   ${DL?`<label style="font-size:12px;display:flex;gap:6px;align-items:center;margin:2px 0 4px"><input type="checkbox" id="galt" ${salvarGaleria?'checked':''}> Salvar cópia no celular ao tirar a foto</label>`:''}
+   ${ASSETS?'':'<p class="muted" style="font-size:12px;margin:0">Sem conexão com a nuvem: as fotos ficam guardadas neste celular e sobem quando você abrir pelo claude.ai com sinal.</p>'}
+   <div id="pfotos"></div>`;
+  if(p.dev&&p.dev.length){const g={LE:[],TR:[],LD:[]};p.dev.forEach(v=>(g[v.lado]=g[v.lado]||[]).push(v));
+    h+='<h3 style="font-size:14px;margin:14px 0 4px">Dispositivos no projeto, por lado</h3><div class="devs">'+['LE','TR','LD'].filter(k=>g[k]&&g[k].length).map(k=>`<b title="${LADO_TXT[k]}">${k}</b><div>${g[k].map(v=>`<span class="d">${esc(v.c)}${v.L?' '+fmtQ(v.L)+' m':''}</span>`).join('')}</div>`).join('')+'</div><p class="muted" style="font-size:11px;margin:0">LE = lado esquerdo · LD = lado direito · TR = atravessa a pista. Lido na faixa de drenagem do projeto.</p>'}
+  if(p.aa.length||p.balert||p.dalert){h+='<h3 style="font-size:14px;margin:14px 0 4px">Alertas</h3>';
+    [p.balert,p.dalert].filter(Boolean).forEach(a=>h+=`<div class="al"><b>Memória:</b> ${esc(a)}</div>`);
+    p.aa.forEach(a=>h+=`<div class="al auto"><b>Regra automática:</b> ${esc(a)}</div>`)}
+  h+=tbl('Bueiro',p.b)+tbl("Entradas, descidas e dissipadores",p.d);
+  if(pend.length){h+=`<h3 style="font-size:14px;margin:16px 0 4px">O que falta · ${fmtR(p.pv)}</h3><p class="muted" style="font-size:12px;margin:0 0 6px">Já está executado em campo? Se sim, entra na próxima medição.</p>`;
+    pend.forEach(x=>{const f=field[x.k]||{};h+=`<div style="border-top:1px solid var(--line);padding:8px 0">
+      <div style="display:flex;justify-content:space-between;gap:8px"><span>${codOf(x)!==x.cod?`<b style="color:var(--extra)">${esc(TNOME[codOf(x)]||codOf(x))}</b><br><span class="muted" style="font-size:11px;text-decoration:line-through">${esc(x.s)}</span>`:esc(x.s)}<br><span class="muted mono" style="font-size:12px">${codOf(x)} · ${fmtQ(x.q)} ${x.u}</span>${ladoTag((field[x.k]||{}).lado||x.lado)}${(field[x.k]||{}).est?` <span class="muted" style="font-size:11px">executado na est. ${esc(field[x.k].est)}</span>`:''}</span><span class="mono" style="white-space:nowrap">${fmtR(codOf(x)!==x.cod?x.q*((D.itens[codOf(x)]||{}).pu||x.pu):x.v)}</span></div>
+      <div style="display:flex;gap:6px 8px;align-items:center;margin-top:6px;flex-wrap:wrap"><span class="seg seg3" data-k="${x.k}">${[['S','✓','Feito'],['N','✕','Não feito'],['X','–','Não precisa']].map(([v,i,l])=>`<button class="${f.s===v?'on':''}" data-v="${v}" aria-pressed="${f.s===v}"><span class="ic" aria-hidden="true">${i}</span>${l}</button>`).join('')}</span><span class="pq" data-k="${x.k}" style="font-size:12px;${f.s==='S'?'':'display:none!important'}">Qtd. feita <input type="number" step="0.01" min="0" value="${f.q!=null&&f.q!==''?f.q:x.q}" style="width:64px;font:inherit;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:2px 4px;background:transparent;color:var(--ink)"> de ${fmtQ(x.q)} ${x.u}</span>${f.src==='ia'?'<span class="muted" style="font-size:11px">sugerido pela análise da foto</span>':''}</div>${trocaSel(x)}
+      <textarea placeholder="${f.s==='X'?'Por que não precisa fazer? (ex.: terreno natural já protegido, fiscal dispensou)':'Observação de campo'}" data-k="${x.k}">${esc(f.o||'')}</textarea></div>`})}
+  else h+='<p class="muted">Nenhuma pendência neste ponto.</p>';
+  if(p.bprox)h+=`<h3 style="font-size:14px;margin:14px 0 4px">Medições próximas sem ponto no projeto</h3><p class="muted" style="font-size:12px">${esc(p.bprox)}</p>`;
+  $('#panel').innerHTML=h+navBar;$('#sheet').classList.add('on');if(!same)$('#panel').scrollTop=0;
+  $('#panel').querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{if(b.dataset.nav!=='')openP(+b.dataset.nav)});
+  if($('#addf'))$('#addf').onclick=()=>$('#fin').click();
+  if($('#galt'))$('#galt').onchange=e=>{salvarGaleria=e.target.checked;LS.set('fru-galeria',salvarGaleria)};
+  $('#panel').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{const k=b.parentNode.dataset.k;const cur=(field[k]||{}).s;const v=cur===b.dataset.v?'':b.dataset.v;
+    setField(k,{s:v,src:'manual'});b.parentNode.querySelectorAll('button').forEach(x=>{x.classList.toggle('on',x.dataset.v===v);x.setAttribute('aria-pressed',x.dataset.v===v)});const pq=$('#panel').querySelector(`.pq[data-k="${k}"]`);if(pq)pq.style.display=v==='S'?'':'none';const ta=$('#panel').querySelector(`textarea[data-k="${k}"]`);if(ta){ta.placeholder=v==='X'?'Por que não precisa fazer? (ex.: terreno natural já protegido, fiscal dispensou)':'Observação de campo';if(v==='X'&&!ta.value)ta.focus()}});
+  $('#panel').querySelectorAll('.tsel').forEach(sl=>sl.onchange=()=>{const k=sl.dataset.k,x=D.pend.find(z=>String(z.k)===k);setField(k,{cod:sl.value===x.cod?'':sl.value});logHist(k,'trocou o tipo executado',`${x.s} → ${TNOME[sl.value]||sl.value}`);setTimeout(()=>openP(openId),200)});
+  $('#panel').querySelectorAll('.pq input').forEach(i=>i.onchange=()=>setField(i.parentNode.dataset.k,{q:Math.max(0,+i.value||0)}));
+  $('#panel').querySelectorAll('textarea').forEach(t=>t.oninput=()=>setField(t.dataset.k,{o:t.value}));
+  refreshPanelFotos();
+}
+function iaHtml(f){
+  if(busy[f.id])return '<div class="ia"><span class="spin"></span> Claude está analisando a foto…</div>';
+  if(!f.ia)return SAMPLE&&canWrite?`<button class="btn ghost" data-an="${f.id}" style="margin-top:6px">Analisar com Claude</button>`:'';
+  const a=f.ia,li=arr=>arr&&arr.length?'<ul>'+arr.map(x=>`<li>${esc(x)}</li>`).join('')+'</ul>':'';
+  const sug=(a.sugestoes||[]).filter(s=>D.pend.find(x=>String(x.k)===String(s.k)));
+  return `<div class="ia"><b>Análise da foto</b>${a.resumo?`<div>${esc(a.resumo)}</div>`:''}
+    ${a.visivel&&a.visivel.length?'<div style="margin-top:4px"><b>Visível:</b></div>'+li(a.visivel):''}
+    ${a.duvidas&&a.duvidas.length?'<div><b>Conferir:</b></div>'+li(a.duvidas):''}
+    ${a.conservacao?`<div><b>Conservação:</b> ${esc(a.conservacao)}</div>`:''}
+    ${sug.length?`<div style="margin-top:6px"><b>Sugestões de marcação:</b><ul>${sug.map(s=>{const x=D.pend.find(z=>String(z.k)===String(s.k));return `<li>${esc(x.s)} → <b>${s.s==='S'?'Executado':'Não feito'}</b>${s.motivo?` <span class="muted">(${esc(s.motivo)})</span>`:''}</li>`}).join('')}</ul>${canWrite?`<button class="btn" data-ap="${f.id}">Aplicar sugestões</button>`:''}</div>`:''}
+    <div class="muted" style="font-size:11px;margin-top:6px">Análise automática: confirme em campo antes de lançar.</div></div>`;
+}
+function refreshPanelFotos(){
+  const el=$('#pfotos');if(!el)return;const fs=fotosDe(openId),qs=filaFotos.filter(r=>r.p===openId);
+  (refreshPanelFotos._u||[]).forEach(u=>URL.revokeObjectURL(u));refreshPanelFotos._u=[];
+  const qh=qs.map(r=>{const u=URL.createObjectURL(r.blob);refreshPanelFotos._u.push(u);return `<div class="ph" data-qimg="${r.qid}" data-u="${u}"><span class="qbadge">⏳ na fila</span><img src="${u}" alt="Foto na fila"><div>${fmtD(r.at)}${geoLink(r.geo)} <button class="chip" data-dq="${r.qid}" style="color:var(--sem)">🗑 apagar</button>${DL?` <button class="chip" data-gq="${r.qid}">⬇ celular</button>`:''}</div></div>`}).join('');
+  el.innerHTML=(fs.length||qs.length)?`<div class="thumbs">${qh}${fs.map(f=>`<div class="ph" data-img="${f.id}"><img src="${esc(f.url||'/_blob/'+f.asset)}" alt="Foto do ponto" loading="lazy"><div>${fmtD(f.at)}${f.geo?geoLink(f.geo):' <span class="muted" style="font-size:11px">sem GPS</span>'}${DB?` <button class="chip" data-df="${f.id}" style="color:var(--sem);border-color:color-mix(in srgb,var(--sem) 45%,transparent)">🗑 apagar</button>`:''}${DL?` <button class="chip" data-gf="${f.id}">⬇ celular</button>`:''}</div></div>`).join('')}</div>${qs.length?`<p style="font-size:12px;margin:4px 0;color:#b26a00">${qs.length} foto${qs.length>1?'s':''} guardada${qs.length>1?'s':''} neste celular, esperando sinal para subir.</p>`:''}`+fs.map(f=>`<div data-fid="${f.id}">${fs.length>1?`<div class="muted" style="font-size:12px;margin-top:8px">Foto de ${fmtD(f.at)}</div>`:''}${iaHtml(f)}</div>`).join('')
+    :'<p class="muted" style="font-size:13px;margin:4px 0">Nenhuma foto ainda.</p>';
+  el.querySelectorAll('[data-img]').forEach(t=>t.onclick=e=>{if(e.target.closest('button'))return;const f=fotos.find(z=>z.id===t.dataset.img);$('#vimg').src=f.url||'/_blob/'+f.asset;$('#viewer').classList.add('on')});
+  el.querySelectorAll('[data-qimg]').forEach(t=>t.onclick=e=>{if(e.target.closest('button'))return;$('#vimg').src=t.dataset.u;$('#viewer').classList.add('on')});
+  el.querySelectorAll('[data-df]').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!confirm('Apagar esta foto? Ela sai do ponto e do relatório.'))return;
+    const f=fotos.find(z=>z.id===b.dataset.df);try{await DB.doc('fotos/'+b.dataset.df).delete();fotos=fotos.filter(z=>z.id!==b.dataset.df);logHist('f'+(f?f.p:''),'apagou foto',f&&P(f.p)?P(f.p).est.split(' ')[0]:'');toast('Foto apagada.');refreshPanelFotos();render()}catch(er){toast('Sem sinal: não consegui apagar agora.')}});
+  el.querySelectorAll('[data-dq]').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!confirm('Apagar esta foto que ainda não subiu?'))return;filaFotos=filaFotos.filter(r=>r.qid!==b.dataset.dq);try{await IDB.del(b.dataset.dq)}catch(er){}updateWarn();refreshPanelFotos();toast('Foto apagada.')});
+  el.querySelectorAll('[data-gf]').forEach(b=>b.onclick=()=>{const f=fotos.find(z=>z.id===b.dataset.gf);salvarNoCelular(f.url||'/_blob/'+f.asset,f.p,f.at)});
+  el.querySelectorAll('[data-gq]').forEach(b=>b.onclick=()=>{const r=filaFotos.find(z=>z.qid===b.dataset.gq);salvarNoCelular(r.blob,r.p,r.at)});
+  el.querySelectorAll('[data-an]').forEach(b=>b.onclick=()=>analisar(fotos.find(z=>z.id===b.dataset.an)));
+  el.querySelectorAll('[data-ap]').forEach(b=>b.onclick=()=>aplicar(fotos.find(z=>z.id===b.dataset.ap)));
+}
+(()=>{let sx=null,sy=null;const pn=()=>$('#panel');document.addEventListener('touchstart',e=>{if(!pn()||!pn().contains(e.target)||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.closest('.thumbs,.tw'))return;sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+ document.addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;if(Math.abs(dx)>80&&Math.abs(dx)>2*Math.abs(dy)&&navCtx&&openId!=null){const i=navCtx.ids.indexOf(openId),t=navCtx.ids[i+(dx<0?1:-1)];if(t!=null)openP(t)}},{passive:true});
+ document.addEventListener('keydown',e=>{if(!$('#sheet').classList.contains('on')||/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName))return;if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const i=navCtx.ids.indexOf(openId),t=navCtx.ids[i+(e.key==='ArrowRight'?1:-1)];if(t!=null)openP(t)}else if(e.key==='Escape')closeP()})})();
+function closeP(){$('#sheet').classList.remove('on');openId=null;render()}
+
+// ---------- FOTOS ----------
+function shrink(file,max){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(file);
+  img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(),'image/jpeg',.82)};
+  img.onerror=()=>{URL.revokeObjectURL(u);rej()};img.src=u})}
+let salvarGaleria=LS.get('fru-galeria',false);
+// ---------- GPS e hora da foto ----------
+async function exifInfo(file){try{
+  const b=new DataView(await file.slice(0,131072).arrayBuffer());if(b.getUint16(0)!==0xFFD8)return {};
+  let o=2;while(o<b.byteLength-4){const m=b.getUint16(o),len=b.getUint16(o+2);if(m===0xFFE1&&b.getUint32(o+4)===0x45786966){const t=o+10,le=b.getUint16(t)===0x4949;
+      const u16=p=>b.getUint16(p,le),u32=p=>b.getUint32(p,le);
+      const ifd=p=>{const n=u16(p),r={};for(let i=0;i<n;i++){const e=p+2+i*12;r[u16(e)]={type:u16(e+2),cnt:u32(e+4),off:e+8}}return r};
+      const val=(en)=>{if(!en)return null;const p=en.cnt*({2:1,5:8,3:2,4:4}[en.type]||1)>4?t+u32(en.off):en.off;
+        if(en.type===2){let s='';for(let i=0;i<en.cnt-1;i++)s+=String.fromCharCode(b.getUint8(p+i));return s}
+        if(en.type===5){const a=[];for(let i=0;i<en.cnt;i++)a.push(u32(p+i*8)/(u32(p+i*8+4)||1));return a}
+        if(en.type===3)return u16(p);return u32(p)};
+      const i0=ifd(t+u32(t+4)),out={};
+      if(i0[0x8769]){const ex=ifd(t+val(i0[0x8769]));const d=val(ex[0x9003]);if(d){const m2=d.match(/(\d+):(\d+):(\d+) (\d+):(\d+):(\d+)/);if(m2)out.date=new Date(+m2[1],m2[2]-1,+m2[3],+m2[4],+m2[5],+m2[6]).toISOString()}}
+      if(i0[0x8825]){const g=ifd(t+val(i0[0x8825]));const la=val(g[2]),lo=val(g[4]);if(la&&lo){const dd=a=>a[0]+a[1]/60+a[2]/3600;let lat=dd(la),lng=dd(lo);if(val(g[1])==='S')lat=-lat;if(val(g[3])==='W')lng=-lng;if(lat||lng)out.gps={lat:+lat.toFixed(6),lng:+lng.toFixed(6),src:'foto'}}}
+      return out}
+    o+=2+len}return {}}catch(e){return {}}}
+let ultPos=null,geoErr=null,geoAvisou=false;
+const pegaPos=()=>new Promise(ok=>{if(!navigator.geolocation)return ok(null);let fim=false;const t=setTimeout(()=>{fim=true;ok(ultPos&&Date.now()-ultPos.t<300000?ultPos.g:null)},7000);
+  try{navigator.geolocation.getCurrentPosition(p=>{if(fim)return;clearTimeout(t);const g={lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy),src:'celular'};ultPos={g,t:Date.now()};ok(g)},er=>{if(fim)return;clearTimeout(t);geoErr=er&&er.code;ok(null)},{enableHighAccuracy:true,timeout:6500,maximumAge:60000})}catch(e){clearTimeout(t);ok(null)}});
+const geoLink=g=>g?` <a href="https://www.google.com/maps?q=${g.lat},${g.lng}" target="_blank" rel="noopener" title="Ver no mapa" onclick="event.stopPropagation()">📍</a>`:'';
+const geoTxt=g=>g?`${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}${g.acc?` (±${g.acc} m)`:''}`:'';
+async function addPhotos(id,files){
+  const posP=pegaPos();
+  for(const file of files){
+    let blob;try{blob=await shrink(file,1600)}catch(e){toast('Não consegui ler essa imagem.');continue}
+    const ex=await exifInfo(file);let geo=ex.gps||null;if(!geo)geo=await Promise.race([posP,new Promise(r=>setTimeout(()=>r(null),2500))]);
+    if(!geo&&!geoAvisou){geoAvisou=true;toast(geoErr===1?'Localização bloqueada: a foto foi salva sem GPS.':'Sem GPS nesta foto: o celular não informou a localização.')}
+    const rec={qid:'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),p:id,at:ex.date||new Date(file.lastModified||Date.now()).toISOString(),blob,by:UID||'',geo};
+    try{await IDB.put(rec)}catch(e){storageOK=false}
+    filaFotos.push(rec);updateWarn();refreshPanelFotos();
+    if(salvarGaleria)salvarNoCelular(file,id,rec.at);
+    if(DB&&ASSETS&&navigator.onLine){toast('Enviando foto…');const ok=await enviarFoto(rec);toast(ok?'Foto salva na nuvem':'Sem sinal: foto guardada no celular, sobe depois');if(!ok){lastErr=true;updateWarn()}}
+    else toast('Foto guardada no celular. Sobe quando tiver sinal.');
+  }
+}
+const enviando=new Set();
+async function enviarFoto(rec){
+  if(!DB||!ASSETS)return false;if(enviando.has(rec.qid))return true;enviando.add(rec.qid);try{return await enviarFoto2(rec)}finally{enviando.delete(rec.qid)}}
+async function enviarFoto2(rec){
+  try{
+    const up=await ASSETS.upload(rec.blob);
+    const doc={p:rec.p,asset:up.id,url:up.url,at:rec.at,up:new Date().toISOString(),by:rec.by||UID||'',...(rec.geo?{geo:rec.geo}:{})};
+    const ref=await DB.collection('fotos').add(doc);
+    filaFotos=filaFotos.filter(r=>r.qid!==rec.qid);try{await IDB.del(rec.qid)}catch(e){}
+    logHist('f'+rec.p,'enviou foto',P(rec.p)?P(rec.p).est.split(' ')[0]:'');
+    updateWarn();refreshPanelFotos();
+    if(SAMPLE)analisar({id:ref.id,...doc},rec.blob);
+    return true;
+  }catch(e){if(e&&e.code==='quota_exceeded')toast('Espaço cheio para fotos.');return false}
+}
+async function salvarNoCelular(blobOrUrl,pid,at){
+  if(!DL){toast('Salvar no celular só funciona com a página aberta no claude.ai.');return}
+  try{const blob=typeof blobOrUrl==='string'?await (await fetch(blobOrUrl)).blob():blobOrUrl;const p=P(pid);
+    const nome=`Fruteiras est ${(p?p.est.split(' ')[0]:pid).replace(/[+,]/g,'-')} ${String(at||'').slice(0,10)}.jpg`;
+    await DL.save({filename:nome,data:blob})}catch(e){if(e&&e.code!=='declined')toast('Não foi possível salvar no celular.')}
+}
+const busy={};
+async function analisar(f,blob){
+  if(!SAMPLE||!f||busy[f.id])return;busy[f.id]=1;
+  const loc=fotos.find(z=>z.id===f.id);if(loc)loc.busy=1;refreshPanelFotos();
+  try{
+    if(!blob){const r=await fetch(f.url||'/_blob/'+f.asset);blob=await r.blob()}
+    const small=await shrink(blob,1024);
+    const p=P(f.p),pend=D.byP[f.p]||[];
+    const proj=[...(p.b||[]),...(p.d||[])].filter(r=>r[1]||r[2]).map(r=>`- ${r[0]}: projeto ${fmtQ(r[1])}, medido ${fmtQ(r[2])}, falta ${fmtQ(r[3])}`).join('\n');
+    const pl=pend.map(x=>`- k=${x.k}: ${x.s} (${fmtQ(x.q)} ${x.u})`).join('\n')||'(nenhuma)';
+    const prompt=`Você é engenheiro de medição de obra rodoviária (drenagem, DER-ES). Analise a foto de campo do ponto de drenagem na estaca ${p.est} (${p.bg||'sem bueiro'}, lado ${p.lado||'?'}).
+O projeto prevê neste ponto:
+${proj||'(sem dados)'}
+Itens pendentes (previstos no projeto e ainda não medidos):
+${pl}
+
+Diga só o que dá para ver na foto. Identifique dispositivos de drenagem visíveis (corpo/boca de bueiro BSTC, caixa coletora, entrada d'água EDA, descida em degraus DSA-03A, descida em calha DSA-01, dissipador de energia, transposição) e se parecem concluídos.
+Para cada item pendente, sugira "S" (aparece executado na foto) ou "N" (claramente não executado no local fotografado) SOMENTE quando a foto deixar claro; se não der para ver, não sugira.
+Responda APENAS com JSON válido, em português:
+{"resumo":"1-2 frases","visivel":["..."],"duvidas":["o que conferir em campo"],"conservacao":"estado geral ou vazio","sugestoes":[{"k":<número k>,"s":"S"|"N","motivo":"curto"}]}`;
+    const r=await SAMPLE(prompt,{images:[small],modelTier:'default'});
+    let t=(r&&r.text)||'';const m=t.match(/\{[\s\S]*\}/);const ia=JSON.parse(m?m[0]:t);
+    ia.at=new Date().toISOString();
+    await DB.doc('fotos/'+f.id).update({ia});
+  }catch(e){
+    if(e&&e.code==='not_granted')toast('Análise não autorizada.');
+    else if(e&&e.code==='rate_limited')toast('Muitas análises seguidas, tente daqui a pouco.');
+    else toast('Não foi possível analisar a foto.');
+  }finally{delete busy[f.id];const l=fotos.find(z=>z.id===f.id);if(l)delete l.busy;refreshPanelFotos()}
+}
+async function aplicar(f){
+  const sug=((f.ia||{}).sugestoes||[]).filter(s=>D.pend.find(x=>String(x.k)===String(s.k))&&(s.s==='S'||s.s==='N'));
+  for(const s of sug){const k=String(s.k);await setField(k,{s:s.s,src:'ia',o:(field[k]||{}).o||('Foto: '+(s.motivo||''))})}
+  toast(sug.length+' itens marcados');openP(f.p);
+}
+// ---------- REDE URBANA ----------
+const slug=s=>String(s).normalize('NFD').replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase();
+const um=id=>(field['u'+id]||{}).s||'';
+function drawUrb(){
+  const U=D.urb;if(!U)return;
+  const R=U.redes,m=a=>a.reduce((s,r)=>s+r.L,0),val=a=>a.reduce((s,r)=>s+r.v,0);
+  const nm=R.filter(r=>!r.g),nmS=nm.filter(r=>um(r.id)==='S'),nmN=nm.filter(r=>um(r.id)==='N');
+  const gs=U.groups,G=Object.fromEntries(gs.map(g=>[g.id,g]));
+  const med600=gs.filter(g=>g.id!=='G19').reduce((s,g)=>s+g.med,0),fora=U.medsem.filter(x=>!/BERÇO/.test(x.obs)).reduce((s,x)=>s+x.q,0);
+  const c=(l,v,col)=>`<div><span class="muted" style="font-size:11px">${l}</span><br><b class="mono" style="font-size:17px;${col?'color:'+col:''}">${v}</b></div>`;
+  let h=`<div class="card"><b>Rede urbana – projeto × memória da 55ª medição</b><p class="muted" style="font-size:12px;margin:2px 0 8px">${esc(U.nota)}</p>
+   <div class="prog">${c('Ø0,60 no projeto',fmtQ(m(R.filter(r=>r.dia===600)))+' m')}${c('Medido em trechos do projeto',fmtQ(med600)+' m')}${c('Medido fora do projeto',fmtQ(fora)+' m')}${c('Trechos sem medição',nm.length+' · '+fmtQ(m(nm))+' m','var(--sem)')}</div>
+   <p style="font-size:13px;margin:10px 0 0">Sem medição: <b>${fmtR(val(nm))}</b> em corpo + berço (${nm.map(r=>r.id).join(', ')}). ${nmS.length?`<span style="color:var(--ok)">${nmS.length} já confirmados em campo (${fmtR(val(nmS))}).</span>`:''}</p>
+   <p class="muted" style="font-size:12px">${esc(U.simul)}</p></div>`;
+  h+=`<div class="card"><b>Trecho a trecho (memória × projeto)</b>`+
+   gs.map(g=>{const df=g.med-g.proj,big=Math.abs(df)>=Math.max(3,g.proj*.1),col=big?(df>0?'var(--extra)':'var(--sem)'):'var(--ok)';return `<div style="border-top:1px solid var(--line);padding:8px 0">
+     <div style="display:flex;justify-content:space-between;gap:8px"><span><b>${esc(g.txt)}</b><br><span class="muted mono" style="font-size:11px">${esc(g.est)} · ${esc(g.mp)}</span></span><span class="mono" style="white-space:nowrap;text-align:right">${fmtQ(g.med)} / ${fmtQ(g.proj)} m<br><b style="color:${col}">${df>0?'+':''}${fmtQ(df)}</b></span></div>
+     <div class="muted" style="font-size:12px">Redes do projeto: <span class="mono">${g.redes.join(', ')}</span></div>${g.obs?`<div class="al auto" style="margin:4px 0 0;font-size:12px">${esc(g.obs)}</div>`:''}</div>`}).join('')+
+   `<p class="muted" style="font-size:11px">Medido / projeto. Diferença: verde = bate (até 10%), roxo = medido a mais, vermelho = medido a menos.</p>
+   <b style="font-size:14px">Medido sem trecho no projeto</b><table>${U.medsem.map(x=>`<tr><td class="mono" style="white-space:nowrap">${esc(x.est)}</td><td class="n">${fmtQ(x.q)} m</td><td style="font-size:12px">${esc(x.obs)} <span class="muted">(${esc(x.mp)})</span></td></tr>`).join('')}</table></div>`;
+  const P=U.pvmed;
+  h+=`<div class="card"><b>Poços de visita</b><div class="prog" style="margin:8px 0">${c('No projeto','61')}${c('Medidos (do projeto)',P.medidos.length)}${c('Medidos fora do projeto',P.extras.length===4?5:P.extras.length,'var(--extra)')}${c('Sem medição',P.faltam.length,'var(--sem)')}</div>
+   <p style="font-size:13px;margin:4px 0"><b>Sem medição:</b> <span class="mono">${P.faltam.join(', ')}</span> (${fmtR(P.faltam.length*2878.19)})</p>
+   <p style="font-size:13px;margin:4px 0"><b>Fora do projeto:</b> ${P.extras.map(esc).join(', ')}</p><div class="al auto" style="font-size:12px">${esc(P.obs)}</div></div>`;
+  h+=`<div class="card"><b>Caixas ralo</b><table>`+Object.entries(U.crmed.per).map(([k,v])=>`<tr><td><b>${esc(k)}</b><br><span style="font-size:12px">${esc(v.obs)}</span></td><td class="n">${v.med}/${v.proj}</td><td class="n" style="color:${v.proj>v.med?'var(--sem)':'inherit'}">${v.proj>v.med?'faltam '+(v.proj-v.med):'ok'}</td></tr>`).join('')+'</table></div>';
+  U.perims.forEach(pm=>{const rs=R.filter(r=>r.per===pm.nome);
+    h+=`<div class="card" id="per-${slug(pm.nome)}"><b>${esc(pm.nome)}</b> <span class="muted" style="font-size:12px">· est. ${pm.de} a ${pm.ate} · folhas ${esc(pm.folhas)}</span>
+     <p class="muted" style="font-size:12px;margin:4px 0 6px">${rs.length} trechos · ${fmtQ(m(rs))} m · ${rs.filter(r=>!r.g).length} sem medição</p><div class="tw"><table><tr><th>Rede</th><th>Começa em</th><th class="n">Compr.</th><th>Medição</th><th>Em campo</th></tr>`+
+     rs.map(r=>`<tr><td class="mono">${r.id}${r.src==='perfil'?'*':''}<br><span class="muted" style="font-size:11px">Ø${r.dia}</span></td><td>${r.pv}${r.est?`<br><span class="muted mono" style="font-size:11px">≈ ${Math.floor(r.est)}+${String(Math.round((r.est%1)*20)).padStart(2,'0')}</span>`:''}</td><td class="n">${fmtQ(r.L)} m</td><td>${r.g?`<span class="tag t-ok">${G[r.g].mp}</span>`:'<span class="tag t-sem">sem medição</span>'}</td><td><span class="seg" data-u="${r.id}">${['S','N'].map(v=>`<button class="${um(r.id)===v?'on':''}" data-v="${v}">${v==='S'?'Existe':'Não'}</button>`).join('')}</span></td></tr>`).join('')+
+     `</table></div>${rs.some(r=>r.src==='perfil')?'<p class="muted" style="font-size:11px">* comprimento medido no perfil: confirmar.</p>':''}</div>`});
+  $('#urbc').innerHTML=h;
+  $('#urbc').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{const id=b.parentNode.dataset.u,v=um(id)===b.dataset.v?'':b.dataset.v;setField('u'+id,{s:v});
+    b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));clearTimeout(window._ur);window._ur=setTimeout(render,400)});
+}
+
+// ================= MEDIÇÃO 56ª =================
+let diario=[],diaSel=null,extras=[],hist=[],cfg=null,UID=null,USER=null,croqSel={};
+const TROCA=[['12.23.038','12.23.039','12.23.054','12.23.055'],['12.23.048','12.23.041','12.23.043','12.23.052']];
+const TNOME={'12.23.038':'Entrada EDA-01','12.23.039':'Entrada EDA-02','12.23.054':'Saída de corte SDC-01','12.23.055':'Saída de aterro SDA-01','12.23.048':'Descida em degraus DSA-03A','12.23.041':'Descida em calha DSA-01','12.23.043':'Descida em calha armada DSA-01A','12.23.052':'Descida em degraus DP-1'};
+const codOf=x=>(field[x.k]||{}).cod||x.cod;
+const trocaSel=x=>{const g=TROCA.find(g=>g.includes(x.cod));if(!g)return '';const c=codOf(x);return `<label class="muted" style="font-size:12px;display:flex;gap:6px;align-items:center;margin-top:6px">Executado como <select class="tsel" data-k="${x.k}" style="font:inherit;font-size:12px;border:1px solid ${c!==x.cod?'var(--extra)':'var(--line)'};border-radius:6px;padding:3px 4px;background:var(--card);color:var(--ink)">${g.map(o=>`<option value="${o}" ${o===c?'selected':''}>${TNOME[o]}${o===x.cod?' (projeto)':''} – ${fmtR((D.itens[o]||{}).pu||0)}</option>`).join('')}</select></label>`};
+const puOf=x=>((D.itens[codOf(x)]||{}).pu)||x.pu;
+const execV=x=>qtyOf(x)*puOf(x);
+const nomeOf=x=>codOf(x)!==x.cod?(TNOME[codOf(x)]||(D.itens[codOf(x)]||{}).s||codOf(x)):x.s;
+const qtyOf=x=>{const f=field[x.k];return f&&f.q!=null&&f.q!==''?+f.q:x.q};
+const parseEst=s=>{const m=String(s||'').match(/(\d+)\s*\+\s*(\d+(?:[.,]\d+)?)/);return m?{i:+m[1],f:+m[2].replace(',','.')}:{i:null,f:null}};
+const estNum=n=>({i:Math.floor(n),f:Math.round((n%1)*20*100)/100});
+const fmtEst=(i,f)=>i==null?'':`${i}+${String(Math.floor(f||0)).padStart(2,'0')}${f%1?','+String(Math.round((f%1)*100)).padStart(2,'0'):''}`;
+const ladoOf=l=>{l=String(l||'').toUpperCase();return /LD.*LE|LE.*LD/.test(l)?'LD/LE':/^LD|^LE|^TR|EIXO/.test(l)?l.split(/[ (]/)[0]:l?'':''};
+const medN=()=>(cfg&&cfg.num)||D.med.num, medP=()=>(cfg&&cfg.periodo)||D.med.periodo;
+const URBP={400:[['12.06.009'],['12.09.001']],600:[['12.06.014'],['12.09.002']],800:[['12.06.018'],['12.09.003']]};
+
+function linhasMemoria(){
+  const L=[];
+  D.pend.filter(x=>marked(x)==='S').forEach(x=>{const p=P(x.p),fe=(field[x.k]||{}).est,e=parseEst(fe||p.est);
+    const fc=(field[x.k]||{}).cod;L.push({key:x.k,kind:'pend',cod:fc||x.cod,i:e.i,f:e.f,lado:(field[x.k]||{}).lado||x.lado||ladoOf(p.lado),q:qtyOf(x),qmax:x.q,obs:`${p.bg?p.bg.split(' (')[0]+' – ':''}ponto ${p.id}${(field[x.k]||{}).src==='ia'?' (foto)':''}${fc&&fc!==x.cod?' – executada como '+((D.itens[fc]||{}).s||fc).split(' ').slice(0,6).join(' ')+' (projeto: '+x.s+')':''}`})});
+  if(D.urb)D.urb.redes.filter(r=>!r.g&&um(r.id)==='S').forEach(r=>{const e=r.est?estNum(r.est):{i:null,f:null},f=field['u'+r.id]||{},q=f.q!=null&&f.q!==''?+f.q:r.L;
+    URBP[r.dia].forEach(([cod])=>L.push({key:'u'+r.id,kind:'urb',cod,i:e.i,f:e.f,lado:'EIXO',q,qmax:r.L,obs:`Rede ${r.id} – ${r.pv} (${r.per})`}))});
+  if(D.lin)D.lin.trechos.filter(t=>lm(t)==='S').forEach(t=>{const e1=estNum(t.a),e2=estNum(t.b),nm=(D.lin.itens.find(r=>r.id===t.item)||{}).nome||t.item;
+    L.push({key:'l'+t.id,kind:'lin',cod:t.cod,i:e1.i,f:e1.f,i2:e2.i,f2:e2.f,lado:t.lado,q:linQ(t),qmax:t.L,obs:`${nm} – trecho do projeto (folha ${t.pg})`})});
+  extras.forEach(x=>L.push({key:'x'+x.id,kind:'extra',cod:x.cod,i:x.i,f:x.f,...(x.i2!=null?{i2:x.i2,f2:x.f2}:{}),lado:x.lado,q:+x.q,obs:x.obs||(x.disc?'Conferido em campo':'Fora do projeto – ver croqui'),extra:x}));
+  return L.filter(l=>l.q>0).sort((a,b)=>a.cod.localeCompare(b.cod)||(a.i??1e9)-(b.i??1e9)||(a.f||0)-(b.f||0));
+}
+function resumo(L){const g={};L.forEach(l=>{const it=D.itens[l.cod]||{};const c=g[l.cod]||(g[l.cod]={cod:l.cod,s:it.s||l.cod,u:it.u||'',pu:it.pu||0,acum:it.acum||0,contr:it.contr||0,q:0,n:0});c.q+=l.q;c.n++});
+  return Object.values(g).map(c=>({...c,v:c.q*c.pu,nov:c.acum+c.q,saldo:c.contr-(c.acum+c.q)})).sort((a,b)=>a.cod.localeCompare(b.cod))}
+
+function drawMed(){
+  const el=$('#medc');if(!el||!D)return;
+  const L=linhasMemoria(),R=resumo(L),tot=R.reduce((s,c)=>s+c.v,0),estoura=R.filter(c=>c.saldo<-0.001);
+  let h=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:16px">${medN()}ª medição provisória</b>
+    <span style="font-size:13px">Período: <input id="mper" value="${esc(medP())}" style="font:inherit;font-size:13px;border:1px solid var(--line);border-radius:6px;padding:3px 6px;background:transparent;color:var(--ink);width:190px"></span></div>
+    <div class="prog" style="margin-top:10px"><div><span class="muted" style="font-size:11px">Linhas na memória</span><br><b class="mono" style="font-size:18px">${L.length}</b></div><div><span class="muted" style="font-size:11px">Itens (códigos)</span><br><b class="mono" style="font-size:18px">${R.length}</b></div><div><span class="muted" style="font-size:11px">Valor da medição</span><br><b class="mono" style="font-size:18px;color:var(--ok)">${fmtR(tot)}</b></div><div><span class="muted" style="font-size:11px">Itens sem saldo</span><br><b class="mono" style="font-size:18px;color:${estoura.length?'var(--sem)':'inherit'}">${estoura.length}</b></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${DL?`<button class="btn" id="bmem">Baixar memória ${medN()}ª (Excel)</button><button class="btn ghost" id="bcroq">Baixar croquis (PDF)</button>`:'<span class="muted" style="font-size:12px">Para baixar, abra a página no claude.ai.</span>'}</div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0">Entram aqui os itens marcados como <b>Executado</b> (mapa, pendências e rede urbana) e os itens fora do projeto que você adicionar abaixo. O Excel tem uma aba por código, no mesmo layout das abas da 55ª, pronta para colar.</p></div>`;
+  h+=`<div class="card"><b>Resumo por item × saldo do contrato</b>`+(R.length?R.map(c=>{const k=(l,v,col)=>`<div><span class="muted" style="font-size:11px">${l}</span><br><b class="mono" style="${col?'color:'+col:''}">${v}</b></div>`;
+    return `<div style="border-top:1px solid var(--line);padding:8px 0"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:13px"><b class="mono">${c.cod}</b> ${esc(c.s.slice(0,70))}</span><b class="mono" style="white-space:nowrap">${fmtR(c.v)}</b></div>
+    <div class="prog" style="margin-top:6px;font-size:13px">${k('Esta medição',fmtQ(c.q)+' '+c.u)}${k('Acumulado 55ª',fmtQ(c.acum))}${k('Novo acumulado',fmtQ(c.nov))}${k('Saldo depois',fmtQ(c.saldo),c.saldo<-0.001?'var(--sem)':'')}</div>
+    ${c.saldo<-0.001?`<div class="al" style="font-size:12px">Passa do contratado em ${fmtQ(-c.saldo)} ${c.u}: precisa de remanejamento (aditivo) ou ficar para depois.</div>`:''}</div>`}).join(''):'<p class="muted">Nada marcado como executado ainda.</p>')+'</div>';
+  h+=`<div class="card"><b>Linhas da memória</b><p class="muted" style="font-size:12px;margin:2px 0 6px">Ajuste a quantidade quando o executado for parcial.</p><div class="tw"><table><tr><th>Código</th><th>Estaca</th><th>Lado</th><th class="n">Qtd.</th><th>Observação</th></tr>`+
+    L.map(l=>`<tr><td class="mono" style="font-size:12px">${l.cod}</td><td class="mono" style="white-space:nowrap">${l.i==null?'<span style="color:var(--sem)">?</span>':fmtEst(l.i,l.f)}${l.i2!=null?'<br>→ '+fmtEst(l.i2,l.f2):''}</td><td>${esc(l.lado)}</td><td class="n">${l.kind==='extra'?fmtQ(l.q):`<input type="number" step="0.01" min="0" class="qin" data-k="${l.key}" data-max="${l.qmax}" value="${l.q}" style="width:72px;font:inherit;font-size:13px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:2px 4px;background:transparent;color:var(--ink)">`}${l.qmax&&l.q<l.qmax?`<br><span class="muted" style="font-size:11px">de ${fmtQ(l.qmax)}</span>`:''}</td><td style="font-size:12px">${esc(l.obs)}${l.kind==='extra'&&canWrite?` <button class="chip" data-delx="${l.extra.id}">remover</button>`:''}</td></tr>`).join('')+'</table></div></div>';
+  // itens fora do projeto
+  const cods=Object.entries(D.itens).sort((a,b)=>a[0].localeCompare(b[0]));
+  h+=`<div class="card"><b>Adicionar serviço fora do projeto</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Entra na memória e ganha croqui automático.</p>
+   <form id="xform" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+    <label style="grid-column:1/-1">Item<br><select name="cod" required style="width:100%;font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink)">${cods.map(([c,v])=>`<option value="${c}">${c} – ${esc(String(v.s).slice(0,55))} (${v.u})</option>`).join('')}</select></label>
+    <label>Estaca<br><input name="est" required placeholder="611+10" style="width:100%;font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink)"></label>
+    <label>Lado<br><select name="lado" style="width:100%;font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink)"><option>LD</option><option>LE</option><option>EIXO</option><option>TR</option><option>LD/LE</option></select></label>
+    <label>Quantidade<br><input name="q" type="number" step="0.01" min="0.01" required style="width:100%;font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink)"></label>
+    <label>Comprimento p/ croqui (m)<br><input name="L" type="number" step="0.1" min="0" placeholder="opcional" style="width:100%;font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink)"></label>
+    <label style="grid-column:1/-1">Foto do serviço (opcional, sai no croqui)<br><input name="foto" type="file" accept="image/*" style="width:100%;font:inherit;font-size:12px"></label>
+    <label style="grid-column:1/-1">Observação / justificativa<br><input name="obs" placeholder="Ex.: descida executada a pedido da fiscalização" style="width:100%;font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink)"></label>
+    <button class="btn" style="grid-column:1/-1" ${DB&&canWrite?'':'disabled'}>Adicionar à memória</button></form></div>`;
+  // croquis
+  const old=(D.msp||[]).map((r,i)=>({id:'m'+i,cod:r[0],...parseEst(r[2]),lado:ladoOf(r[3]),q:+r[4]||0,obs:r[6]||'',ref:`Memória aba ${r[0]} linha ${r[1]}`}));
+  if(D.urb)D.urb.medsem.forEach((x,i)=>old.push({id:'u'+i,cod:/BERÇO/.test(x.obs)?'12.09.002':'12.06.014',...parseEst(x.est.includes('+')?x.est:x.est+'+00'),lado:'EIXO',q:x.q,obs:x.obs,ref:x.mp}));
+  h+=`<div class="card"><b>Croquis</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Croqui esquemático (sem escala) de cada serviço fora do projeto. Os novos desta medição entram sempre; marque também os já medidos que precisam ser regularizados.</p>
+   ${extras.filter(x=>!x.disc).length?`<div class="gal" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${extras.filter(x=>!x.disc).map(x=>`<div class="ph" data-cq="x${x.id}">${croquiSVG(xToC(x),true)}<div class="mono">${x.cod} · ${fmtEst(x.i,x.f)}</div></div>`).join('')}</div>`:'<p class="muted" style="font-size:13px">Nenhum serviço novo fora do projeto.</p>'}
+   <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px"><b>Já medidos sem projeto</b> (${old.length}) – selecionar para regularizar</summary>
+   <div style="margin:6px 0"><button class="chip" id="cqall">Marcar todos</button> <button class="chip" id="cqnone">Desmarcar</button></div>
+   <table>${old.map(o=>`<tr><td><input type="checkbox" class="cqsel" data-id="${o.id}" ${croqSel[o.id]?'checked':''}></td><td class="mono" style="font-size:12px;white-space:nowrap">${o.cod}<br>${fmtEst(o.i,o.f)} ${esc(o.lado)}</td><td class="n">${fmtQ(o.q)}</td><td style="font-size:12px">${esc(o.obs)}</td></tr>`).join('')}</table></details></div>`;
+  // histórico
+  h+=`<div class="card"><b>Histórico de alterações</b><p class="muted" style="font-size:12px;margin:2px 0 6px">Quem marcou o quê e quando. Serve de registro se a fiscalização questionar.</p><div id="histl">${hist.length?'':'<p class="muted" style="font-size:13px">Nenhuma alteração registrada ainda.</p>'}</div></div>`;
+  el.innerHTML=h;
+  window._oldCroq=old;
+  const per=$('#mper');if(per)per.onchange=()=>saveCfg({periodo:per.value});
+  el.querySelectorAll('.qin').forEach(i=>i.onchange=()=>{let v=Math.max(0,+i.value||0);setField(i.dataset.k,{q:v});setTimeout(render,300)});
+  el.querySelectorAll('[data-delx]').forEach(b=>b.onclick=async()=>{const x=extras.find(e=>e.id===b.dataset.delx);if(!x)return;try{await DB.doc('extras/'+x.id).delete();logHist('x'+x.id,'removeu serviço fora do projeto',`${x.cod} ${fmtEst(x.i,x.f)} ${fmtQ(x.q)}`)}catch(e){toast('Não foi possível remover.')}});
+  el.querySelectorAll('.cqsel').forEach(c=>c.onchange=()=>{croqSel[c.dataset.id]=c.checked});
+  if($('#cqall'))$('#cqall').onclick=()=>{old.forEach(o=>croqSel[o.id]=true);drawMed()};
+  if($('#cqnone'))$('#cqnone').onclick=()=>{croqSel={};drawMed()};
+  const xf=$('#xform');if(xf)xf.onsubmit=async e=>{e.preventDefault();const fd=new FormData(xf),est=parseEst(fd.get('est'));
+    if(est.i==null){toast('Estaca no formato 611+10');return}
+    const x={cod:fd.get('cod'),i:est.i,f:est.f,lado:fd.get('lado'),q:+fd.get('q'),L:+fd.get('L')||null,obs:fd.get('obs')||'',at:new Date().toISOString(),by:UID||''};
+    const ff=fd.get('foto');if(ff&&ff.size&&ASSETS){try{toast('Enviando foto…');const up=await ASSETS.upload(await shrink(ff,1600));x.fotoAsset=up.id;x.fotoUrl=up.url||'';x.fotoAt=new Date(ff.lastModified||Date.now()).toISOString()}catch(err){toast('A foto não subiu; o serviço será salvo sem foto.')}}
+    try{const r=await DB.collection('extras').add(x);logHist('x'+r.id,'adicionou serviço fora do projeto',`${x.cod} ${fmtEst(x.i,x.f)} ${x.lado} ${fmtQ(x.q)}`);toast('Adicionado à memória');xf.reset()}catch(err){toast('Não foi possível salvar.')}};
+  if($('#bmem'))$('#bmem').onclick=baixarMemoria;
+  if($('#bcroq'))$('#bcroq').onclick=baixarCroquis;
+  extras.filter(x=>!x.disc).forEach(x=>{const c=xToC(x),k=croqKey(c);if(!croqImgCache[k])croqPrep(c).then(()=>{const el=document.querySelector(`[data-cq="x${x.id}"]`);if(el){const t=el.querySelector('svg');if(t)t.outerHTML=croquiSVG(c,true)}})});
+  drawHist();
+}
+async function saveCfg(o){cfg={...(cfg||{}),...o};if(DB&&canWrite)try{await DB.doc('config/med').set(cfg)}catch(e){}}
+
+// ---------- histórico ----------
+const HLBL=k=>{if(k.startsWith('u')){return 'Rede '+k.slice(1)}if(k.startsWith('l')&&D.lin){const t=D.lin.trechos.find(x=>'l'+x.id===k);if(t)return `${t.item} ${estF(t.a)}→${estF(t.b)} ${t.lado}`}if(k.startsWith('x'))return 'Serviço fora do projeto';const x=D.pend.find(z=>String(z.k)===String(k));if(!x)return k;const p=P(x.p);return `${p.est.split(' ')[0]} · ${x.s}`};
+async function logHist(k,acao,det){if(DB&&!canWrite)return;filaHist.push({k:String(k),acao,det:det||'',at:new Date().toISOString(),by:UID||''});saveFila();if(DB&&!syncing){while(filaHist.length){try{await DB.collection('hist').add(filaHist[0]);filaHist.shift()}catch(e){if(e&&e.code==='invalid_argument'){filaHist.shift();continue}lastErr=true;break}}saveFila()}}
+async function drawHist(){
+  const el=$('#histl');if(!el||!hist.length)return;
+  let names={};try{if(USER&&USER.profiles){const ids=[...new Set(hist.map(h=>h.by).filter(Boolean))];if(ids.length)names=await USER.profiles(ids)}}catch(e){}
+  el.innerHTML='<table>'+hist.slice(0,80).map(h=>`<tr><td class="muted mono" style="font-size:11px;white-space:nowrap">${fmtD(h.at)}</td><td style="font-size:12px"><b class="hn" data-id="${esc(h.by)}"></b> ${esc(h.acao)}<br><span class="muted">${esc(HLBL(h.k))}${h.det?' · '+esc(h.det):''}</span></td></tr>`).join('')+'</table>';
+  el.querySelectorAll('.hn').forEach(n=>{const p=names[n.dataset.id];n.textContent=(p&&p.name)||'Alguém'});
+}
+
+// ---------- Excel da memória ----------
+function sheetMem(cod,lines){
+  const it=D.itens[cod]||{s:cod,u:'',col:'L'},col=it.col||'L',ci={F:5,I:8,L:11}[col]??11;
+  const A=[];const blank=()=>new Array(15).fill('');
+  const r=(arr)=>{const x=blank();arr.forEach(([i,v])=>x[i]=v);A.push(x)};
+  r([[1,'ESTADO DO ESPÍRITO SANTO'],[13,'CONTRATO: 007/2014']]);
+  r([[1,'SECRETARIA DE ESTADO DE MOBILIDADE E INFRAESTRUTURA - SEMOBI'],[13,'Nº. PROCESSO: 64899497/2013']]);
+  r([[1,'DEPARTAMENTO DE EDIFICAÇÕES E DE RODOVIAS DO ESTADO DO ESPÍRITO SANTO - DER -ES'],[13,'EMPRESA: RDJ ENGENHARIA LTDA']]);
+  r([[1,'Serviço: Pavimentação da Rodovia ES-475'],[13,`${medN()}ª MEDIÇÃO PROVISÓRIA`]]);
+  r([[1,'Trecho: Entr. ES-166 (Castelo) -Entr. ES-164 (São José Fruteiras)'],[13,'PERÍODO:'],[14,medP()]]);
+  {const fi=D.ff&&D.ff.itens.find(z=>z.cod===cod),gi=fi?D.ff.grupos.indexOf(fi.g):-1;r([[0,'GRUPO:'],[1,gi>=0?gi+1:3],[2,fi?fi.g:'OBRAS DE ARTE CORRENTES E DRENAGEM']])}
+  r([[0,'CÓDIGO'],[1,cod],[2,it.s]]);
+  r([[0,'Estaca'],[2,'Estaca'],[4,'Lado'],[5,'Dimensões'],[8,'UNIDADE'],[9,'Área'],[10,'Volume'],[11,col==='I'?'UNIDADE':({M2:'Área total',M3:'Volume total',T:'Peso total',UD:'Quantidade',UN:'Quantidade',VB:'Quantidade'}[String(it.u||'').toUpperCase().trim()]||'Comprimento total')],[12,'Observação']]);
+  r([[0,'Inteira'],[1,'Fração'],[2,'Inteira'],[3,'Fração'],[5,'Comp.'],[6,'Larg.'],[7,'Alt./Esp.'],[8,'(Unid)']]);
+  const first=A.length+1;
+  lines.forEach(l=>{const x=blank();x[0]=l.i??'';x[1]=l.f??'';if(l.i2!=null){x[2]=l.i2;x[3]=l.f2}x[4]=l.lado||'';x[ci]=Math.round(l.q*1000)/1000;x[12]=`${medN()}ª MP`;x[13]=l.obs;A.push(x)});
+  const last=A.length,C='ABCDEFGHIJKLMNO'[ci];
+  const tot=blank();tot[0]=`TOTAL DA PRESENTE MEDIÇÃO (${medN()}ª)`;tot[11]={t:'n',f:`SUM(${C}${first}:${C}${last})`};A.push(tot);
+  const ant=blank();ant[0]=`ACUMULADO ATÉ A ${D.med.ant}ª MEDIÇÃO`;ant[11]=it.acum??0;A.push(ant);
+  const ac=blank();ac[0]='TOTAL ACUMULADO ATÉ A PRESENTE MEDIÇÃO';ac[11]={t:'n',f:`L${last+1}+L${last+2}`};A.push(ac);
+  const sd=blank();sd[0]='SALDO CONTRATUAL APÓS A MEDIÇÃO';sd[11]={t:'n',f:`${it.contr??0}-L${last+3}`};A.push(sd);
+  const ws=XLSX.utils.aoa_to_sheet(A);
+  ws['!cols']=[{wch:8},{wch:7},{wch:8},{wch:7},{wch:7},{wch:8},{wch:7},{wch:8},{wch:8},{wch:7},{wch:7},{wch:14},{wch:10},{wch:44},{wch:22}];
+  ws['!merges']=[{s:{r:last,c:0},e:{r:last,c:10}},{s:{r:last+1,c:0},e:{r:last+1,c:10}},{s:{r:last+2,c:0},e:{r:last+2,c:10}},{s:{r:last+3,c:0},e:{r:last+3,c:10}}];
+  return ws;
+}
+async function baixarMemoria(){
+  if(!DL||!window.XLSX){toast('Download indisponível aqui.');return}
+  const L=linhasMemoria();if(!L.length){toast('Nada para medir: marque itens como Executado.');return}
+  const R=resumo(L),wb=XLSX.utils.book_new();
+  const head=[['ES-475 Castelo – Fruteiras · Contrato 007/2014'],[`${medN()}ª MEDIÇÃO PROVISÓRIA – DRENAGEM`],['Período: '+medP()],[],
+    ['Código','Serviço','Un.','Preço unit. (R$)','Qtd. desta medição','Valor (R$)','Acum. até a '+D.med.ant+'ª','Novo acumulado','Contratado','Saldo após','Linhas']];
+  R.forEach((c,i)=>{const r=6+i;head.push([c.cod,c.s,c.u,c.pu,Math.round(c.q*1000)/1000,{t:'n',f:`D${r}*E${r}`},c.acum,{t:'n',f:`G${r}+E${r}`},c.contr,{t:'n',f:`I${r}-H${r}`},c.n])});
+  head.push(['','TOTAL','','','',{t:'n',f:`SUM(F6:F${5+R.length})`}]);
+  const ws=XLSX.utils.aoa_to_sheet(head);ws['!cols']=[{wch:11},{wch:60},{wch:5},{wch:12},{wch:12},{wch:14},{wch:13},{wch:13},{wch:12},{wch:12},{wch:7}];
+  XLSX.utils.book_append_sheet(wb,ws,'RESUMO');
+  R.forEach(c=>XLSX.utils.book_append_sheet(wb,sheetMem(c.cod,L.filter(l=>l.cod===c.cod)),c.cod));
+  const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  try{await DL.save({filename:`Memoria ${medN()}a medicao drenagem Fruteiras.xlsx`,data:new Blob([buf])});logHist('mem','baixou a memória da '+medN()+'ª',`${L.length} linhas · ${fmtR(R.reduce((s,c)=>s+c.v,0))}`)}catch(e){if(e&&e.code!=='declined')toast('Não foi possível baixar.')}
+}
+
+// ---------- croquis ----------
+const xToC=x=>({cod:x.cod,i:x.i,f:x.f,lado:x.lado,q:x.q,L:x.L,obs:x.obs,fotoAsset:x.fotoAsset||null,fotoUrl:x.fotoUrl||null,at:x.fotoAt||x.at,ref:`${medN()}ª medição – serviço fora do projeto`});
+function tipoCod(c){if(/^12\.(06|09)\./.test(c))return'tubo';if(/^12\.15\./.test(c))return'caixa';if(/^12\.23\.0(4[0-9]|5[0-2])/.test(c))return'descida';if(/^12\.23\.03[89]/.test(c))return'entrada';if(/^12\.24\./.test(c))return'dissip';if(/^12\.12\./.test(c))return'boca';return'outro'}
+function croquiSVG(c,thumb,imgs,compact){
+  imgs=imgs||croqImgCache[croqKey(c)]||{};
+  const W=1000,H=900,it=D.itens[c.cod]||{s:c.cod,u:''},t=tipoCod(c.cod),e=c.i==null?0:c.i+(c.f||0)/20;
+  const x0=e-2,x=n=>80+(n-x0)/4*840,X=x(e),yT=230,yB=330,yA=280,lado=String(c.lado||'').toUpperCase();
+  const side=lado.startsWith('LE')?-1:1,yEdge=side<0?yT:yB;
+  const len=+(c.L||(it.u==='M'?c.q:0))||0,pxm=840/80;
+  let g='';
+  // estrada
+  g+=`<rect x="40" y="${yT}" width="920" height="${yB-yT}" fill="#e9e6dd"/><line x1="40" x2="960" y1="${yT}" y2="${yT}" stroke="#333" stroke-width="2"/><line x1="40" x2="960" y1="${yB}" y2="${yB}" stroke="#333" stroke-width="2"/><line x1="40" x2="960" y1="${yA}" y2="${yA}" stroke="#333" stroke-dasharray="14 10"/>`;
+  for(let k=Math.ceil(x0);k<=x0+4;k++){const xx=x(k);g+=`<line x1="${xx}" x2="${xx}" y1="${yA-8}" y2="${yA+8}" stroke="#333"/><text x="${xx}" y="${yA-12}" font-size="14" text-anchor="middle" fill="#333">${k}</text>`}
+  g+=`<text x="50" y="${yT-10}" font-size="14" fill="#555">LE</text><text x="50" y="${yB+22}" font-size="14" fill="#555">LD</text><text x="960" y="${yB+44}" font-size="13" text-anchor="end" fill="#555">sentido do estaqueamento →</text>`;
+  const red='#c8412f';
+  const lab=(xx,yy,txt,anchor)=>`<text x="${xx}" y="${yy}" font-size="15" font-weight="bold" fill="${red}" text-anchor="${anchor||'middle'}">${esc(txt)}</text>`;
+  if(t==='tubo'){
+    if(lado==='TR'||lado==='EIXO'&&!c.L&&false){const l=Math.max(len*pxm,120);g+=`<rect x="${X-9}" y="${yA-l/2}" width="18" height="${l}" fill="none" stroke="${red}" stroke-width="3"/>`+lab(X+16,yA-l/2-8,`${fmtQ(len)} m`,'start')}
+    else{const l=Math.max(len*pxm,60),y=lado==='EIXO'?yA+20:yEdge+side*45;g+=`<rect x="${X}" y="${y-8}" width="${l}" height="16" fill="none" stroke="${red}" stroke-width="3"/>`+lab(X+l/2,y+side*26+(side<0?0:6),`${fmtQ(len)} m`)}
+  }else if(t==='caixa'){const y=lado==='EIXO'?yA:yEdge+side*40;g+=`<rect x="${X-16}" y="${y-16}" width="32" height="32" fill="#fff" stroke="${red}" stroke-width="3"/><line x1="${X-16}" y1="${y-16}" x2="${X+16}" y2="${y+16}" stroke="${red}"/><line x1="${X+16}" y1="${y-16}" x2="${X-16}" y2="${y+16}" stroke="${red}"/>`+lab(X,y+side*40+(side<0?0:8),`${fmtQ(c.q)} un`)}
+  else if(t==='descida'){const l=Math.max(len*pxm*1.2,70);let p=`M${X} ${yEdge}`;for(let s=1;s<=8;s++){p+=` l0 ${side*l/16} l${s%2?10:-10} ${side*l/16}`}g+=`<path d="${p}" fill="none" stroke="${red}" stroke-width="3"/>`+lab(X+20,yEdge+side*(l+20),`${fmtQ(len||c.q)} m`,'start')}
+  else if(t==='entrada'){g+=`<path d="M${X-18} ${yEdge} L${X+18} ${yEdge} L${X} ${yEdge+side*30}Z" fill="none" stroke="${red}" stroke-width="3"/>`+lab(X,yEdge+side*52,`${fmtQ(c.q)} un`)}
+  else if(t==='dissip'){const y=yEdge+side*110;g+=`<rect x="${X-26}" y="${y-14}" width="52" height="28" fill="none" stroke="${red}" stroke-width="3"/>${[0,1,2,3].map(k=>`<line x1="${X-22+k*12}" y1="${y-12}" x2="${X-14+k*12}" y2="${y+12}" stroke="${red}"/>`).join('')}<line x1="${X}" y1="${yEdge}" x2="${X}" y2="${y-14}" stroke="${red}" stroke-dasharray="5 4"/>`+lab(X,y+side*32+(side<0?0:6),`${fmtQ(c.q)} un`)}
+  else if(t==='boca'){const y=yEdge+side*40;g+=`<path d="M${X-22} ${y-12} L${X+22} ${y-12} L${X+14} ${y+12} L${X-14} ${y+12}Z" fill="none" stroke="${red}" stroke-width="3"/>`+lab(X,y+side*34+(side<0?0:6),`${fmtQ(c.q)} un`)}
+  else{g+=`<circle cx="${X}" cy="${yEdge+side*40}" r="14" fill="none" stroke="${red}" stroke-width="3"/>`+lab(X,yEdge+side*70,`${fmtQ(c.q)} ${it.u||''}`)}
+  const ly=side<0?yB+70:yT-66;g+=`<line x1="${X}" x2="${X}" y1="${yT-60}" y2="${yB+60}" stroke="${red}" stroke-dasharray="3 4" opacity=".6"/><rect x="${X-62}" y="${ly-17}" width="124" height="22" fill="#fff"/><text x="${X}" y="${ly}" font-size="15" font-weight="bold" text-anchor="middle" fill="${red}">Est. ${fmtEst(c.i,c.f)}</text>`;
+  // carimbo
+  const pan=(x,tit,im,vazio)=>{const bx=x,by=492,bw=470,bh=232;let r=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="#f7f6f2" stroke="#999"/><rect x="${bx}" y="${by}" width="${bw}" height="24" fill="#1d2321"/><text x="${bx+8}" y="${by+17}" font-size="13" font-weight="bold" fill="#fff">${esc(tit)}</text>`;
+    if(im&&im.d){const aw=bw-8,ah=bh-32,k=Math.min(aw/im.w,ah/im.h),w=im.w*k,h=im.h*k;r+=`<image href="${im.d}" x="${bx+4+(aw-w)/2}" y="${by+28+(ah-h)/2}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"/>`;if(im.cap)r+=`<rect x="${bx}" y="${by+bh-20}" width="${bw}" height="20" fill="rgba(255,255,255,.85)"/><text x="${bx+8}" y="${by+bh-6}" font-size="11" fill="#333">${esc(im.cap)}</text>`}
+    else r+=`<text x="${bx+bw/2}" y="${by+bh/2+10}" font-size="13" fill="#888" text-anchor="middle">${esc(vazio)}</text>`;return r};
+  if(compact)return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 50 1000 500" width="1000" height="500" font-family="Arial, Helvetica, sans-serif"><rect y="50" width="1000" height="500" fill="#fff"/>${g}</svg>`;
+  g+=pan(20,imgs.proj?`Projeto – ${imgs.proj.tit}`:'Projeto',imgs.proj,imgs.loading?'carregando…':'Estaca fora da faixa de drenagem das pranchas')+pan(510,imgs.foto?`Foto de campo – ${imgs.foto.tit}`:'Foto de campo',imgs.foto,imgs.loading?'carregando…':'Sem foto de campo nesta estaca');
+  const cb=`<g transform="translate(0,262)"><rect x="20" y="470" width="960" height="150" fill="#fff" stroke="#333"/><line x1="640" y1="470" x2="640" y2="620" stroke="#333"/>
+   ${(()=>{const w=(c.cod+' – '+it.s).split(' '),ls=['',''];let i=0;w.forEach(x=>{if(i<1&&(ls[i]+' '+x).length>66)i++;ls[i]=(ls[i]?ls[i]+' ':'')+x});if(ls[1].length>80)ls[1]=ls[1].slice(0,78)+'…';return `<text x="34" y="494" font-size="15" font-weight="bold">${esc(ls[0])}</text>${ls[1]?`<text x="34" y="512" font-size="13" font-weight="bold">${esc(ls[1])}</text>`:''}`})()}
+   <text x="34" y="532" font-size="14">Estaca ${fmtEst(c.i,c.f)} · Lado ${esc(c.lado||'-')} · Quantidade: ${fmtQ(c.q)} ${esc(it.u||'')}${c.L&&it.u!=='M'?` · Comprimento ${fmtQ(c.L)} m`:''}</text>
+   <text x="34" y="556" font-size="13" fill="#444">${esc(String(c.obs||'').slice(0,90))}</text>
+   <text x="34" y="576" font-size="13" fill="#444">${esc(String(c.obs||'').slice(90,180))}</text>
+   <text x="34" y="604" font-size="12" fill="#666">${esc(c.ref||'')}</text>
+   <text x="654" y="496" font-size="13" font-weight="bold">ES-475 Castelo – Fruteiras</text><text x="654" y="518" font-size="12">Contrato 007/2014 · RDJ Engenharia</text><text x="654" y="540" font-size="12">${medN()}ª medição provisória · ${esc(medP())}</text>
+   <text x="654" y="566" font-size="12" font-weight="bold">CROQUI ESQUEMÁTICO – SEM ESCALA</text><text x="654" y="604" font-size="12">Responsável: ____________________</text></g>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" ${thumb?'width="100%" style="display:block;background:#fff"':`width="${W}" height="${H}"`} font-family="Arial, Helvetica, sans-serif"><rect width="${W}" height="${H}" fill="#fff"/><text x="20" y="36" font-size="20" font-weight="bold">Croqui – ${esc(c.cod)} · Est. ${fmtEst(c.i,c.f)}</text>${g}${cb}</svg>`;
+}
+// ---------- imagens do croqui: recorte do projeto + foto de campo ----------
+let PRMAP=null;fetch('pr/map.json').then(r=>r.json()).then(m=>PRMAP=m).catch(()=>{});
+const croqImgCache={};
+const croqKey=c=>`${c.i}|${c.f}|${c.fotoAsset||''}`;
+function loadImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src})}
+async function projCrop(e){
+  if(!PRMAP)try{PRMAP=await (await fetch('pr/map.json')).json()}catch(x){return null}
+  let best=null;PRMAP.forEach(m=>{const a=m.ticks[0][1],b=m.ticks[m.ticks.length-1][1];if(e>=a-2&&e<=b+2){const d=Math.min(e-a,b-e);if(!best||d>best.d)best={m,d}}});
+  if(!best)return null;const m=best.m,T=m.ticks;
+  let k=0;while(k<T.length-2&&e>T[k+1][1])k++;const [xa,sa]=T[k],[xb,sb]=T[k+1],xpt=xa+(e-sa)*(xb-xa)/(sb-sa),ppe=(xb-xa)/(sb-sa);
+  const sc=m.w/(m.x1-m.x0),cx=(xpt-m.x0)*sc,half=Math.max(8*ppe*sc,400);
+  const im=await loadImg(m.file),sx=Math.max(0,cx-half),sw=Math.min(m.w,cx+half)-sx;
+  const cv=document.createElement('canvas');cv.width=Math.round(sw);cv.height=m.h;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(im,sx,0,sw,m.h,0,0,sw,m.h);
+  const lx=cx-sx;g.strokeStyle='#c8412f';g.lineWidth=3;g.setLineDash([10,7]);g.beginPath();g.moveTo(lx,0);g.lineTo(lx,cv.height);g.stroke();
+  g.setLineDash([]);g.fillStyle='#c8412f';g.font='bold 22px Arial';const lab='Est. '+fmtEst(Math.floor(e),Math.round((e%1)*20*100)/100);const tw=g.measureText(lab).width;g.fillStyle='rgba(255,255,255,.9)';g.fillRect(lx+6,4,tw+10,28);g.fillStyle='#c8412f';g.fillText(lab,lx+11,26);
+  return {d:cv.toDataURL('image/jpeg',.85),w:cv.width,h:cv.height,tit:`Volume 2, folha ${m.page}`,cap:'Faixa de drenagem do projeto – a linha vermelha marca a estaca'};
+}
+async function fotoPerto(c,e){
+  let f=null;
+  if(c.fotoAsset)f={url:c.fotoUrl||'/_blob/'+c.fotoAsset,at:c.at};
+  else{const near=fotos.filter(x=>{const p=P(x.p);return p&&!p.inter&&Math.abs(p.n-e)<=1}).sort((a,b)=>Math.abs(P(a.p).n-e)-Math.abs(P(b.p).n-e)||(b.at||'').localeCompare(a.at||''));f=near[0]}
+  if(!f)return null;
+  try{const im=await imgData(f.url||'/_blob/'+f.asset,900);const p=f.p?P(f.p):null;return {...im,tit:fmtD(f.at),cap:p?`Ponto ${p.id} · Est. ${p.est.split(' ')[0]}${p.bg?' · '+p.bg:''}`:'Foto anexada ao serviço'}}catch(x){return null}
+}
+async function croqPrep(c){
+  const k=croqKey(c);if(croqImgCache[k]&&!croqImgCache[k].loading)return croqImgCache[k];
+  const e=c.i==null?null:c.i+(c.f||0)/20;croqImgCache[k]={loading:true};
+  const [proj,foto]=e==null?[null,null]:await Promise.all([projCrop(e).catch(()=>null),fotoPerto(c,e).catch(()=>null)]);
+  return croqImgCache[k]={proj,foto};
+}
+function svgPngWH(svg,w,h){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));img.onload=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(img,0,0,w,h);URL.revokeObjectURL(u);res(c.toDataURL('image/png'))};img.onerror=e=>{URL.revokeObjectURL(u);rej(e)};img.src=u})}
+function svgPng(svg){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));img.onload=()=>{const c=document.createElement('canvas');c.width=2000;c.height=1800;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/png'))};img.onerror=e=>{URL.revokeObjectURL(u);rej(e)};img.src=u})}
+async function baixarCroquis(){
+  if(!DL||!window.jspdf){toast('Download indisponível aqui.');return}
+  const list=extras.filter(x=>!x.disc).map(xToC).concat((window._oldCroq||[]).filter(o=>croqSel[o.id]));
+  if(!list.length){toast('Nenhum croqui: adicione um serviço fora do projeto ou selecione os já medidos.');return}
+  const b=$('#bcroq');b.disabled=true;b.innerHTML='<span class="spin"></span> Gerando…';
+  try{const pdf=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    for(let i=0;i<list.length;i++){if(i)pdf.addPage();await croqPrep(list[i]);const png=await svgPng(croquiSVG(list[i]));pdf.addImage(png,'PNG',(297-211)/2,8,211,189.9);pdf.setFontSize(9);pdf.text(`Folha ${i+1}/${list.length}`,287,203,{align:'right'})}
+    await DL.save({filename:`Croquis ${medN()}a medicao Fruteiras.pdf`,data:pdf.output('blob')});logHist('croq','baixou os croquis',`${list.length} folhas`);
+  }catch(e){if(e&&e.code!=='declined')toast('Não foi possível gerar o PDF.')}
+  b.disabled=false;b.textContent='Baixar croquis (PDF)';
+}
+
+
+// ================= RELATÓRIO FINAL (PDF) =================
+const pt=s=>String(s??'').replace(/→/g,'->').replace(/≈/g,'~').replace(/[✓✔]/g,'OK').replace(/[✕✗]/g,'X').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,'...').replace(/×/g,'x').replace(/[^\x00-\xFF–—•€]/g,'');
+const brl=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const qf=v=>(Math.round((v||0)*100)/100).toLocaleString('pt-BR');
+function relStep(t){const b=$('#brel');if(b)b.innerHTML='<span class="spin"></span> '+t}
+async function imgData(src,maxW){const blob=src instanceof Blob?src:await (await fetch(src)).blob();
+  return new Promise((res,rej)=>{const u=URL.createObjectURL(blob),im=new Image();im.onload=()=>{const k=Math.min(1,maxW/im.width),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res({d:c.toDataURL('image/jpeg',.8),w:c.width,h:c.height})};im.onerror=e=>{URL.revokeObjectURL(u);rej(e)};im.src=u})}
+async function gerarRelatorio(){
+  if(!DL||!window.jspdf||!window.jspdf.jsPDF){toast('Para baixar o relatório, abra a página no claude.ai.');return}
+  REL_GPS=($('#rgps')||{}).checked===true;const o={resp:($('#rresp')||{}).value||'',modo:($('#rmod')||{}).value||'vist',fotos:false,croq:($('#rcro')||{}).checked!==false,par:($('#rpar')||{}).checked!==false,anexo:($('#ranx')||{}).checked!==false};
+  saveCfg({resp:o.resp});
+  const b=$('#brel');b.disabled=true;
+  try{
+  relStep('Montando o relatório…');
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),M=15,W=210,CW=W-2*M;
+  const C={ink:[29,35,33],mut:[107,113,108],ok:[47,143,91],sem:[200,65,47],fal:[217,138,28],acc:[31,95,139],cin:[107,113,108],line:[220,216,204]};
+  let y=M;
+  const need=h=>{if(y+h>282){doc.addPage();y=M+4}};
+  const H1=(t)=>{if(y>M+6)y+=5;need(20);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...C.ink);doc.text(pt(t),M,y);y+=2;doc.setDrawColor(...C.acc);doc.setLineWidth(.6);doc.line(M,y,M+CW,y);y+=7};
+  const P_=(t,sz,col,bold)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(sz||10);doc.setTextColor(...(col||C.ink));const ls=doc.splitTextToSize(pt(t),CW);ls.forEach(l=>{need(5.6);doc.text(l,M,y);y+=(sz||10)*0.5})};
+  const T=(head,body,opt)=>{doc.autoTable({startY:y,head:[head.map(pt)],body:body.map(r=>r.map(c=>typeof c==='string'?pt(c):c)),margin:{left:M,right:M,top:M+4},styles:{fontSize:8,cellPadding:1.6,textColor:C.ink,lineColor:C.line,lineWidth:.1},headStyles:{fillColor:C.ink,textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[247,245,240]},...(opt||{})});y=doc.lastAutoTable.finalY+7};
+  // dados
+  const S=D.pend.filter(x=>marked(x)==='S'),N=D.pend.filter(x=>marked(x)==='N'),X=D.pend.filter(x=>marked(x)==='X'),U=D.pend.filter(x=>!marked(x));
+  const sum=a=>a.reduce((s,x)=>s+x.v,0),sumQ=a=>a.reduce((s,x)=>s+qtyOf(x)*x.pu,0),tot=sum(D.pend);
+  const L=linhasMemoria(),R=resumo(L),totMed=R.reduce((s,c)=>s+c.v,0),estoura=R.filter(c=>c.saldo<-0.001);
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  if(false){
+  // ---- CAPA ----
+  doc.setFillColor(...C.ink);doc.rect(0,0,W,70,'F');
+  doc.setTextColor(255);doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text('RELATÓRIO DE VISTORIA DE DRENAGEM',M,22);
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.text('ES-475 Castelo – Fruteiras',M,34);
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.text(pt(`Contrato 007/2014 · ${medN()}ª medição provisória · ${medP()}`),M,44);
+  doc.text(pt('Pavimentação da Rodovia ES-475 · Entr. ES-166 (Castelo) – Entr. ES-164 (São José de Fruteiras)'),M,51);
+  doc.setFontSize(9);doc.text(pt(`RDJ Engenharia Ltda · emitido em ${hoje}${o.resp?' · Responsável: '+o.resp:''}`),M,60);
+  y=84;
+  const kp=[['Pendência pelo projeto',brl(tot),C.fal],['Feito – lançar na medição',brl(totMed),C.ok],['Não feito – frente de serviço',brl(sum(N)),C.sem],['Não precisa fazer',brl(sum(X)),C.cin],['Ainda não conferido',brl(sum(U)),C.mut],['Valor já conferido',Math.round((tot-sum(U))/tot*100)+'%',C.acc]];
+  kp.forEach((k,i)=>{const cx=M+(i%2)*(CW/2+2),cy=y+Math.floor(i/2)*24;doc.setDrawColor(...C.line);doc.setFillColor(252,251,248);doc.roundedRect(cx,cy,CW/2-2,20,2,2,'FD');doc.setFillColor(...k[2]);doc.rect(cx,cy,2,20,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...C.mut);doc.text(pt(k[0]),cx+6,cy+7);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...k[2]);doc.text(pt(k[1]),cx+6,cy+15.5)});
+  y+=3*24+6;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.ink);doc.text('Conteúdo',M,y);y+=6;
+  const secs=['1. Memória da próxima medição e saldo do contrato','2. Frente de serviço (não executado)','3. Itens que não precisam ser executados','4. Rede pluvial urbana','5. Itens lineares','6. Alertas e divergências da memória'].concat(o.par&&parecerTxt?['7. Parecer técnico']:[]).concat(o.croq?['Croquis dos pontos com foto de campo']:[]).concat(o.anexo?['Anexo – itens por estaca']:[]);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);secs.forEach(s=>{doc.text(pt(s),M+3,y);y+=5.5});
+  y+=4;P_('Base: Projeto executivo (Volume 2), memória de cálculo da 55ª medição e vistoria de campo registrada no sistema de medição. Valores pelos preços unitários do contrato.',8.5,C.mut);
+  // ---- 2 MEMÓRIA ----
+  doc.addPage();y=M+4;H1(`1. Memória da ${medN()}ª medição e saldo do contrato`);
+  if(R.length){T(['Código','Serviço','Un.','Qtd.','Valor','Acum. 55ª','Novo acum.','Saldo após'],R.map(c=>[c.cod,c.s.length>95?c.s.slice(0,92)+'...':c.s,c.u,qf(c.q),brl(c.v),qf(c.acum),qf(c.nov),qf(c.saldo)]).concat([['','TOTAL','','',brl(totMed),'','','']]),
+      {columnStyles:{0:{cellWidth:18},1:{cellWidth:58},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right'}},didParseCell:d=>{if(d.section==='body'&&d.column.index===7&&R[d.row.index]&&R[d.row.index].saldo<-0.001){d.cell.styles.textColor=C.sem;d.cell.styles.fontStyle='bold'}if(d.section==='body'&&d.row.index===R.length)d.cell.styles.fontStyle='bold'}});
+    if(estoura.length)P_(`Atenção: ${estoura.map(c=>`${c.cod} passa do contratado em ${qf(-c.saldo)} ${c.u}`).join('; ')}. Esses itens precisam de remanejamento (aditivo) ou devem ficar para depois.`,9,C.sem,true);
+    y+=2;P_(`A memória completa, no formato das abas da 55ª (estaca, lado, quantidade, observação), está no Excel "Memória ${medN()}ª" gerado pelo sistema.`,8.5,C.mut);
+  }else P_('Nenhum item marcado como feito até o momento.',10,C.mut);
+  // ---- 3 FRENTE ----
+  H1('2. Frente de serviço (não executado)');
+  if(N.length){const g=agg(N);T(['Serviço','Qtd.','Valor','Pontos'],g.map(c=>[c.s,qf(c.q)+' '+c.u,brl(c.v),String(c.n)]),{columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
+    T(['Estaca','Lado','Serviço','Qtd.','Observação de campo'],N.map(x=>[P(x.p).est.split(' ')[0],x.lado||'',x.s,qf(x.q)+' '+x.u,(field[x.k]||{}).o||'']),{columnStyles:{0:{cellWidth:22},1:{cellWidth:12},3:{halign:'right',cellWidth:18}}});}
+  else P_('Nenhum item marcado como não feito.',10,C.mut);
+  // ---- 4 NÃO PRECISA ----
+  H1('3. Itens que não precisam ser executados');
+  if(X.length){P_('Itens do projeto dispensados em campo. Sugere-se pedir à fiscalização a supressão desses quantitativos.',9,C.mut);y+=1;
+    T(['Estaca','Lado','Serviço','Qtd.','Valor','Motivo'],X.map(x=>[P(x.p).est.split(' ')[0],x.lado||'',x.s,qf(x.q)+' '+x.u,brl(x.v),(field[x.k]||{}).o||'(sem motivo registrado)']),{columnStyles:{0:{cellWidth:22},1:{cellWidth:12},3:{halign:'right'},4:{halign:'right'}}});}
+  else P_('Nenhum item marcado como "não precisa".',10,C.mut);
+  // ---- 5 REDE URBANA ----
+  if(D.urb){H1('4. Rede pluvial urbana');const Ub=D.urb,nm=Ub.redes.filter(r=>!r.g),nmS=nm.filter(r=>um(r.id)==='S'),nmN=nm.filter(r=>um(r.id)==='N');
+    P_(`O projeto tem ${Ub.redes.length} trechos de rede (Patrimônio do Ouro, Interseção 01, Capivara e Fruteiras), 61 poços de visita e 122 caixas ralo. Comparando com a memória da 55ª, ${nm.length} trechos (${qf(nm.reduce((s,r)=>s+r.L,0))} m, ${brl(nm.reduce((s,r)=>s+r.v,0))}) não têm medição; ${nmS.length} já foram confirmados em campo e ${nmN.length} não existem.`);y+=2;
+    T(['Item','Projeto','Medido (acum.)','Falta','Saldo contrato'],Ub.balanco.map(b=>[b.s,qf(b.proj)+' '+b.u,b.acum==null?'–':qf(b.acum),b.acum==null?'–':qf(Math.max(0,b.proj-b.acum)),b.contr==null?'sem saldo':qf(b.contr-b.acum)]),{columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}});
+    T(['Trechos sem medição','Perímetro','Compr.','Em campo'],nm.map(r=>['Rede '+r.id+' ('+r.pv+')',r.per,qf(r.L)+' m Ø'+r.dia,um(r.id)==='S'?'Existe':um(r.id)==='N'?'Não existe':'Não conferido']));
+    const div=Ub.groups.filter(g=>Math.abs(g.med-g.proj)>=Math.max(3,g.proj*.1)||g.obs);
+    if(div.length)T(['Memória (55ª)','Medido','Projeto','Observação'],div.map(g=>[g.txt+' – '+g.est,qf(g.med),qf(g.proj),g.obs||'Diferença acima de 10%']),{columnStyles:{1:{halign:'right'},2:{halign:'right'}}});
+    P_('Poços de visita sem medição: '+Ub.pvmed.faltam.join(', ')+'. '+Ub.pvmed.obs,9);y+=1;
+    Object.entries(Ub.crmed.per).forEach(([k,v])=>P_(`Caixas ralo – ${k}: ${v.med} de ${v.proj}. ${v.obs}`,9));y+=3}
+  // ---- LINEARES ----
+  if(D.lin){H1('5. Itens lineares (sarjetas, meio-fio, canaletas, valetas e drenos)');const Lx=D.lin;
+    P_('Projeto medido nos traços da faixa de drenagem das folhas GE, pela legenda da folha GE-01, e comparado com a memória da 55ª por estaca e lado.',9,C.mut);y+=1;
+    T(['Item','Projeto','Contrato','Medido 55ª','Falta pelo total','Valor da falta','Trechos sem medição'],Lx.itens.map(r=>[r.nome,qf(r.proj),qf(r.contr),qf(r.acum),qf(r.liq),brl(r.liq*r.pu),`${Lx.trechos.filter(t=>t.item===r.id).length} (${qf(r.falta)} m)`]),{columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'}}});
+    const tv=Lx.trechos.filter(t=>lm(t));
+    if(tv.length)T(['Trecho','Lado','Item','Compr.','Vistoria','Observação'],tv.sort((a,b)=>a.a-b.a).map(t=>[`${estF(t.a)} a ${estF(t.b)}`,t.lado,t.item,qf(lm(t)==='S'?linQ(t):t.L)+' m',{S:'Feito',N:'Não feito',X:'Não precisa'}[lm(t)],(field['l'+t.id]||{}).o||'']),{columnStyles:{0:{cellWidth:36},1:{cellWidth:12},3:{halign:'right',cellWidth:18}},didParseCell:d=>{if(d.section==='body'&&d.column.index===4)d.cell.styles.textColor=situCor(d.cell.raw)}});
+    else P_('Nenhum trecho linear conferido em campo ainda.',9,C.mut)}
+  // ---- 6 ALERTAS ----
+  H1('6. Alertas e divergências da memória');
+  const auto=D.points.filter(p=>p.aa.length);
+  if(auto.length)T(['Estaca','Alerta automático (projeto x memória)'],auto.flatMap(p=>p.aa.map(a=>[p.est.split(' ')[0],a])),{columnStyles:{0:{cellWidth:24}}});
+  if(D.alr.length)T(['Aba','Estaca','Qtd.','Observação escrita na memória'],D.alr.map(r=>[String(r[0]),String(r[2]||''),qf(r[4]),String(r[6]||'')]),{columnStyles:{0:{cellWidth:20},1:{cellWidth:22},2:{halign:'right',cellWidth:14}}});
+  // ---- 7 PARECER ----
+  if(o.par&&parecerTxt){H1('7. Parecer técnico');P_(parecerTxt.replace(/\*\*/g,'').replace(/^#+\s*/gm,''),10);y+=2;P_('Texto elaborado com apoio do Claude a partir dos dados da vistoria; revisado pelo responsável técnico.',8,C.mut)}
+  }
+  // ---- CROQUIS (modelo pontos com pendência + fotos reais) ----
+  if(o.croq){relStep('Croquis…');const n=await secaoCroquis(doc,o.modo,relStep);if(!n){doc.addPage('a4','portrait');y=M+4;H1('Croquis');P_('Nenhum ponto com foto de campo ainda.',10,C.mut)}}
+  // rodapé
+  const n=doc.getNumberOfPages();for(let i=2;i<=n;i++){doc.setPage(i);const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();if(pw>ph)continue;doc.setFontSize(7.5);doc.setTextColor(...C.mut);doc.setFont('helvetica','normal');
+    doc.text(pt(`ES-475 Castelo – Fruteiras · Relatório de vistoria de drenagem · ${medN()}ª medição`),M,ph-8);doc.text(`${i} / ${n}`,pw-M,ph-8,{align:'right'})}
+  if(doc.getNumberOfPages()>1)doc.deletePage(1);
+  relStep('Salvando…');
+  await DL.save({filename:`Relatorio vistoria drenagem Fruteiras ${medN()}a medicao.pdf`,data:doc.output('blob')});
+  logHist('rel','baixou o relatório final',`${n} páginas`);
+  if(CONF)toast(`Conferido: ${CONF.pontos} pontos, sem repetição, em ordem de estaca${CONF.extrasJuntos?` · ${CONF.extrasJuntos} serviço(s) fora do projeto junto(s) do croqui do ponto`:''}.`);
+  }catch(e){if(!(e&&e.code==='declined'))toast('Não foi possível gerar o relatório.');console.error(e)}
+  b.disabled=false;b.textContent='📄 Gerar relatório final (PDF)';
+}
+
+
+// ================= CROQUIS NO MODELO "pontos com pendência" =================
+const NAVY=[31,58,95],BLUE=[47,111,176],ORG=[192,80,43],ORGBG=[253,227,211],GRY=[107,113,108];
+async function projCrops(e){
+  if(!PRMAP)try{PRMAP=await (await fetch('pr/map.json')).json()}catch(x){return []}
+  const pages=PRMAP.filter(m=>{const a=m.ticks[0][1],b=m.ticks[m.ticks.length-1][1];return e>=a-3&&e<=b+3}).sort((x,y)=>{const d=m=>Math.min(e-m.ticks[0][1],m.ticks[m.ticks.length-1][1]-e);return d(y)-d(x)});
+  const out=[];for(const m of pages.slice(0,2)){const c=await cropPage(m,e);if(c)out.push(c)}
+  return out.slice(0,(out[0]&&Math.min(e-pages[0].ticks[0][1],pages[0].ticks[pages[0].ticks.length-1][1]-e)>4)?1:2);
+}
+async function cropPage(m,e){
+  const T=m.ticks;let k=0;while(k<T.length-2&&e>T[k+1][1])k++;const [xa,sa]=T[k],[xb,sb]=T[k+1],xpt=xa+(e-sa)*(xb-xa)/(sb-sa),ppe=(xb-xa)/(sb-sa);
+  const sc=m.w/(m.x1-m.x0),cx=(xpt-m.x0)*sc,half=Math.max(9*ppe*sc,420);
+  const im=await loadImg(m.file),sx=Math.max(0,Math.min(m.w-2*half,cx-half)),sw=Math.min(m.w-sx,2*half);
+  const cv=document.createElement('canvas');cv.width=Math.round(sw);cv.height=m.h;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(im,sx,0,sw,m.h,0,0,sw,m.h);
+  const lx=cx-sx;if(lx>=0&&lx<=cv.width){g.strokeStyle='#c8412f';g.lineWidth=3;g.setLineDash([10,7]);g.beginPath();g.moveTo(lx,0);g.lineTo(lx,cv.height);g.stroke();g.setLineDash([])}
+  return {d:cv.toDataURL('image/jpeg',.85),w:cv.width,h:cv.height,page:m.page};
+}
+const resumoPend=pend=>pend.map(x=>{const s=x.s.toLowerCase();const n=/corpo/.test(s)?'corpo '+(s.match(/ø ?0,\d+/i)||[''])[0]:/berço/.test(s)?'berço':/boca/.test(s)?'boca':/caixa/.test(s)?'caixa':/entrada|saída/.test(s)?'entrada':/degrau/.test(s)?'descida degraus':/calha/.test(s)?'descida calha':/dissip/.test(s)?'dissipador':x.s;return `${n} ${qf(x.q)} ${x.u==='M'?'m':'un'}`}).join('; ');
+const situ=x=>{const f=field[x.k]||{};return f.s==='S'?'Feito':f.s==='N'?'Não feito':f.s==='X'?'Não precisa':'Não conferido'};
+function situCor(s){return s==='Feito'?[47,143,91]:s==='Não feito'?[200,65,47]:s==='Não precisa'?GRY:[150,150,150]}
+async function nomes(ids){try{if(USER&&USER.profiles&&ids.length){const ps=await USER.profiles(ids);return id=>(ps[id]&&ps[id].name)||''}}catch(e){}return ()=>''}
+function cqHeader(doc,tit,sub,dir){const W=doc.internal.pageSize.getWidth();doc.setFillColor(...NAVY);doc.rect(0,0,W,17,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(pt(tit),10,8.5);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.text(pt(sub),10,14);if(dir){doc.setFontSize(9);doc.text(pt(dir),W-10,8.5,{align:'right'})}}
+function cqFooter(doc,txt,n,tot){const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...GRY);doc.text(pt(txt),10,H-6);doc.text(`Croqui ${n} de ${tot}`,W-10,H-6,{align:'right'})}
+function addImgFit(doc,im,x,y,bw,bh,border){const k=Math.min(bw/im.w,bh/im.h),w=im.w*k,h=im.h*k;doc.addImage(im.d,'JPEG',x+(bw-w)/2,y,w,h);if(border){doc.setDrawColor(180);doc.setLineWidth(.2);doc.rect(x+(bw-w)/2,y,w,h)}return h}
+// lista de pontos que entram
+function pontosCroqui(modo){
+  return D.points.filter(p=>modo==='todos'?(D.byP[p.id]||[]).length:fotosDe(p.id).length).sort((a,b)=>a.n-b.n);
+}
+async function paginaPonto(doc,p,num,tot,nomeDe,rodape,xs){xs=xs||[];
+  doc.addPage('a4','landscape');const W=297,H=210,L=10,LW=150,RX=166,RW=121;
+  const pend=D.byP[p.id]||[],e=p.n,crops=await projCrops(e);
+  cqHeader(doc,`Croqui ${num}  ·  Ponto ${p.id}  ·  Estaca ${p.est.split(' ')[0]}`,p.bg||'Descida / dissipador (sem bueiro)',crops.length?`Folha(s) do projeto: ${crops.map(c=>c.page).join(', ')}`:'');
+  // esquerda: recortes
+  let yl=22;const maxH=crops.length>1?34:50;
+  crops.forEach(c=>{const h=addImgFit(doc,c,L,yl,LW,maxH,true);doc.setFontSize(7);doc.setTextColor(...GRY);doc.text(`Recorte da folha ${c.page} do PDF do projeto – linha vermelha = estaca do ponto`,L+1,yl+h+3.5);yl+=h+7});
+  if(!crops.length){doc.setFontSize(9);doc.setTextColor(...GRY);doc.text('Sem recorte do projeto para esta estaca.',L,yl+5);yl+=10}
+  // direita: tabela
+  const rows=[...(p.b||[]),...(p.d||[])].filter(r=>r[1]||r[2]);
+  doc.autoTable({startY:22,margin:{left:RX,right:W-RX-RW},tableWidth:RW,head:[['Item','Lado','Projeto','Medido','Falta']],body:rows.map(r=>[pt(r[0]),ladoItem(p,r[0])||'–',qf(r[1]),qf(r[2]),r[3]>0?qf(r[3]):'–']),
+    styles:{fontSize:7.5,cellPadding:1.3,lineColor:[220,216,204],lineWidth:.1},headStyles:{fillColor:BLUE,textColor:255},columnStyles:{1:{halign:'center',cellWidth:14,fontStyle:'bold',textColor:BLUE},2:{halign:'center',cellWidth:14},3:{halign:'center',cellWidth:14},4:{halign:'center',cellWidth:12}},
+    didParseCell:d=>{if(d.section==='body'&&d.column.index===4&&rows[d.row.index][3]>0){d.cell.styles.fillColor=ORGBG;d.cell.styles.textColor=ORG;d.cell.styles.fontStyle='bold'}}});
+  let yr=doc.lastAutoTable.finalY+5;
+  const sec=(t,txt,cor)=>{if(!txt)return;doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...(cor||NAVY));doc.text(pt(t),RX,yr);yr+=3.8;doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(40);const ls=doc.splitTextToSize(pt(txt),RW);doc.text(ls.slice(0,4),RX,yr);yr+=ls.slice(0,4).length*3.2+2.5};
+  if(p.dev&&p.dev.length){const g={};p.dev.forEach(v=>(g[v.lado]=g[v.lado]||[]).push(v.c+(v.L?' '+qf(v.L)+'m':'')));sec('Dispositivos por lado (projeto)',['LE','TR','LD'].filter(k=>g[k]).map(k=>`${k}: ${g[k].join(', ')}`).join('   |   '))}
+  sec('Medições em que houve lançamento',p.meds||'');
+  sec('Alerta escrito na memória',[p.balert,p.dalert].filter(Boolean).join(' | '),[160,40,30]);
+  if(p.pdf)sec('Do PDF do projeto',p.pdf);
+  // fotos reais
+  let y=Math.max(yl,yr)+1;const vist=new Set(),fs=fotosDe(p.id).filter(f=>{const k=f.at||f.id;if(vist.has(k))return false;vist.add(k);return true}).slice(0,3);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...NAVY);doc.text('FOTOS DE CAMPO',L,y+3);y+=5;
+  const vistH=8+pend.length*5.4,boxH=Math.max(28,Math.min(70,H-12-vistH-y-9));
+  if(fs.length){const gw=(W-2*L-(fs.length-1)*4)/fs.length;let x=L,hmax=0;
+    for(const f of fs){try{const im=await imgData(f.url||'/_blob/'+f.asset,1100);const h=addImgFit(doc,im,x,y,gw,boxH,true);hmax=Math.max(hmax,h);if(REL_GPS){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(70);doc.text(pt(`${fmtD(f.at)}${f.geo?'  ·  GPS '+geoTxt(f.geo):'  ·  sem GPS'}`),x,y+h+3.2);hmax=Math.max(hmax,h+4)}}catch(e){}x+=gw+4}
+    y+=hmax+5}
+  else{doc.setDrawColor(200);doc.setLineDash([1.5,1.5],0);doc.rect(L,y,W-2*L,14);doc.setLineDash([]);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GRY);doc.text('Sem foto de campo registrada neste ponto.',W/2,y+8.5,{align:'center'});y+=18}
+  // vistoria de campo (preenchida)
+  doc.autoTable({startY:y,margin:{left:L,right:L,bottom:12},head:[['VISTORIA DE CAMPO – serviço','Situação','Qtd. feita','Observação']],
+    body:pend.map(x=>{const f=field[x.k]||{},s=situ(x),tc=codOf(x)!==x.cod;return [pt(`${tc?(TNOME[codOf(x)]||codOf(x))+' (projeto: '+x.s+')':x.s} (${qf(x.q)} ${x.u})${(f.lado||x.lado)?' – '+(f.lado||x.lado):''}${f.est?' – executado na est. '+f.est:''}`),s,s==='Feito'?qf(qtyOf(x)):'',pt(f.o||'')]}).concat(xs.map(x=>[pt(`${TNOME[x.cod]||((D.itens[x.cod]||{}).s||x.cod).slice(0,70)} – fora do projeto${x.lado?' – '+x.lado:''}`),'Feito',qf(x.q),pt(x.obs||'')])),
+    styles:{fontSize:7.5,cellPadding:1.2,lineColor:[220,216,204],lineWidth:.1},headStyles:{fillColor:[255,248,225],textColor:[60,50,20],fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:90},1:{cellWidth:26,fontStyle:'bold'},2:{cellWidth:20,halign:'right'}},
+    didParseCell:d=>{if(d.section==='body'&&d.column.index===1)d.cell.styles.textColor=situCor(d.cell.raw)}});
+  cqFooter(doc,rodape,num,tot);
+}
+async function paginaExtra(doc,x,num,tot,rodape){
+  doc.addPage('a4','landscape');const W=297,H=210,L=10,LW=150,RX=166,RW=121,c=xToC(x),it=D.itens[x.cod]||{s:x.cod,u:''},e=x.i+(x.f||0)/20;
+  cqHeader(doc,`Croqui ${num}  ·  Serviço fora do projeto  ·  Estaca ${fmtEst(x.i,x.f)}`,`${x.cod} – ${it.s}`.slice(0,140),'Não consta no projeto');
+  const crops=await projCrops(e);let yl=22;
+  crops.forEach(cr=>{const h=addImgFit(doc,cr,L,yl,LW,crops.length>1?48:60,true);doc.setFontSize(7);doc.setTextColor(...GRY);doc.text(`Recorte da folha ${cr.page} – linha vermelha = estaca do serviço`,L+1,yl+h+3.5);yl+=h+7});
+  // esquema simplificado (svg) à direita
+  try{const png=await svgPngWH(croquiSVG({...c},false,{},true),1600,800);doc.addImage(png,'PNG',RX,22,RW,RW*0.5)}catch(e){}
+  let yr=22+RW*0.5+4;
+  const sec=(t,txt,cor)=>{doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...(cor||NAVY));doc.text(pt(t),RX,yr);yr+=3.8;doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(40);const ls=doc.splitTextToSize(pt(txt),RW);doc.text(ls.slice(0,4),RX,yr);yr+=ls.slice(0,4).length*3.2+2.5};
+  sec('Serviço',`${qf(x.q)} ${it.u} · lado ${x.lado} · ${brl(x.q*(it.pu||0))}`,ORG);sec('Justificativa',x.obs||'—');
+  let y=Math.max(yl,yr)+2;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...NAVY);doc.text('FOTO DE CAMPO',L,y+3);y+=5;
+  const im=await fotoPerto(c,e).catch(()=>null);
+  if(im){const h=addImgFit(doc,im,L,y,W-2*L,H-y-16,true);}
+  else{doc.setFontSize(8.5);doc.setTextColor(...GRY);doc.setFont('helvetica','normal');doc.text('Sem foto de campo para este serviço.',L,y+6)}
+  cqFooter(doc,rodape,num,tot);
+}
+async function secaoCroquis(doc,modo,step){
+  // conferência: um croqui por ponto, sem repetir, em ordem de estaca
+  const pts=[...new Map(pontosCroqui(modo).map(p=>[p.id,p])).values()];
+  const comFoto=x=>x.fotoAsset||fotos.some(f=>{const p=P(f.p);return p&&!p.inter&&Math.abs(p.n-(x.i+(x.f||0)/20))<=1});
+  const XS0=[...new Map((modo==='todos'?extras.filter(x=>!x.disc):extras.filter(x=>!x.disc&&comFoto(x))).map(x=>[x.id,x])).values()];
+  const anexa={},XS=[];
+  XS0.forEach(x=>{const e=x.i+(x.f||0)/20,p=pts.find(p=>!p.inter&&Math.abs(p.n-e)<=0.25);if(p)(anexa[p.id]=anexa[p.id]||[]).push(x);else XS.push(x)});
+  const items=[...pts.map(p=>({e:p.n,p})),...XS.map(x=>({e:x.i+(x.f||0)/20,x}))].sort((a,b)=>a.e-b.e);
+  const tot=items.length;if(!tot)return 0;
+  doc.addPage('a4','landscape');cqHeader(doc,'Croquis dos pontos – drenagem','Pontos com foto de campo · um ponto por página');
+  doc.autoTable({startY:24,margin:{left:10,right:10,top:22},head:[['Nº','Estaca','Ponto','Serviços conferidos']],
+    body:items.map((it,i)=>it.p?[String(i+1),it.p.est.split(' ')[0],String(it.p.id),pt((D.byP[it.p.id]||[]).filter(x=>marked(x)==='S').map(x=>TNOME[codOf(x)]||x.s).concat((anexa[it.p.id]||[]).map(x=>(TNOME[x.cod]||x.cod)+' (fora do projeto)')).join('; ')||'—')]:[String(i+1),fmtEst(it.x.i,it.x.f),'–',pt((TNOME[it.x.cod]||it.x.cod)+' (fora do projeto)')]),
+    styles:{fontSize:8,cellPadding:1.3,lineColor:[220,216,204],lineWidth:.1},headStyles:{fillColor:NAVY,textColor:255},alternateRowStyles:{fillColor:[247,247,250]},columnStyles:{0:{cellWidth:12,halign:'center'},1:{cellWidth:28,halign:'center'},2:{cellWidth:16,halign:'center'}}});
+  CONF={pontos:pts.length,extrasJuntos:XS0.length-XS.length,extrasSoltos:XS.length,ordem:items.every((it,i)=>!i||items[i-1].e<=it.e)};
+  for(let i=0;i<tot;i++){step&&step(`Croquis ${i+1}/${tot}…`);const it=items[i];if(it.p)await paginaPonto(doc,it.p,i+1,tot,null,'',anexa[it.p.id]||[]);else await paginaExtra(doc,it.x,i+1,tot,'')}
+  return tot;
+}
+let CONF=null,REL_GPS=false;
+
+// ================= ITENS LINEARES =================
+let linF={item:'todos',lado:'todos',sit:'todos'};
+const lm=t=>(field['l'+t.id]||{}).s||'';
+const linQ=t=>{const f=field['l'+t.id]||{};return f.q!=null&&f.q!==''?+f.q:t.L};
+const estF=n=>{const i=Math.floor(n+1e-9),f=Math.round((n-i)*20*100)/100;return fmtEst(i,f)};
+const LCOR={'DP-02':'#e8860c','MFC-05':'#1f4fd6','CANALETA':'#7a1fe0','GRELHA':'#7a1fe0','SCA 70/15':'#d41fd4','STC-04':'#e0244a','VPC-03':'#4a1fe0','VPA-02':'#13a3a3','DRENO':'#8a6ddc','MFS DP-01':'#d94545'};
+function drawLin(){
+  const el=$('#linc');if(!el||!D||!D.lin)return;const Lx=D.lin,T=Lx.trechos;
+  const sit=t=>lm(t)||'U';
+  let h=`<div class="card"><b>Itens lineares – projeto × memória da ${D.med.ant}ª</b><p class="muted" style="font-size:12px;margin:2px 0 8px">${esc(Lx.nota)}</p>`;
+  h+=Lx.itens.map(r=>{const tr=T.filter(t=>t.item===r.id),feito=tr.filter(t=>lm(t)==='S');return `<div style="border-top:1px solid var(--line);padding:8px 0">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span><i style="display:inline-block;width:18px;height:4px;border-radius:2px;background:${LCOR[r.id]};vertical-align:3px;margin-right:6px"></i><b>${esc(r.nome)}</b> <span class="muted mono" style="font-size:11px">${r.cods.join(' + ')}</span></span><b class="mono" style="white-space:nowrap;color:${r.liq>0?'var(--sem)':'var(--ok)'}">${r.liq>0?fmtR(r.liq*r.pu):'ok'}</b></div>
+    <div class="prog" style="margin-top:6px;font-size:13px">
+     <div><span class="muted" style="font-size:11px">Projeto (pranchas)</span><br><b class="mono">${fmtQ(r.proj)} m</b><br><span class="muted" style="font-size:11px">contrato ${fmtQ(r.contr)} m</span></div>
+     <div><span class="muted" style="font-size:11px">Medido até a ${D.med.ant}ª</span><br><b class="mono">${fmtQ(r.acum)} m</b></div>
+     <div><span class="muted" style="font-size:11px">Falta pelo total</span><br><b class="mono" style="color:${r.liq>0?'var(--sem)':'inherit'}">${fmtQ(r.liq)} m</b><br><span class="muted" style="font-size:11px">saldo contrato ${fmtQ(r.contr-r.acum)} m</span></div>
+     <div><span class="muted" style="font-size:11px">Trechos do projeto sem medição</span><br><b class="mono">${tr.length} · ${fmtQ(r.falta)} m</b>${feito.length?`<br><span style="color:var(--ok);font-size:11px">${feito.length} feitos (${fmtQ(feito.reduce((s,t)=>s+linQ(t),0))} m)</span>`:''}</div></div>
+    ${r.fora>0?`<div class="muted" style="font-size:11px">Medido fora dos trechos do projeto: ${fmtQ(r.fora)} m${r.id==='MFC-05'?' (inclui o meio-fio das ruas urbanas, que não aparece na faixa da rodovia)':''}.</div>`:''}</div>`}).join('')+'</div>';
+  const items=[['todos','Todos']].concat(Lx.itens.map(r=>[r.id,r.id]));
+  const R=T.filter(t=>(linF.item==='todos'||t.item===linF.item)&&(linF.lado==='todos'||t.lado===linF.lado)&&(linF.sit==='todos'||sit(t)===linF.sit)).sort((a,b)=>a.a-b.a);
+  h+=`<div class="card"><b>Trechos do projeto sem medição</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Cada trecho aparece no projeto e não tem linha na memória na mesma estaca e lado. Confira em campo: se já está pronto, marque <b>Feito</b> (entra na memória da ${medN()}ª com estaca inicial e final).</p>
+   <div class="filters">${items.map(([k,l])=>`<button class="chip ${linF.item===k?'on':''}" data-lf="item" data-k="${k}">${esc(l)}</button>`).join('')}</div>
+   <div class="filters">${[['todos','Os dois lados'],['LE','LE'],['LD','LD']].map(([k,l])=>`<button class="chip ${linF.lado===k?'on':''}" data-lf="lado" data-k="${k}">${l}</button>`).join('')}<span style="width:8px"></span>${[['todos','Qualquer'],['S','Feito'],['N','Não feito'],['X','Não precisa'],['U','Não conferido']].map(([k,l])=>`<button class="chip ${linF.sit===k?'on':''}" data-lf="sit" data-k="${k}">${l}</button>`).join('')}</div>
+   <div class="tot"><span><b>${R.length}</b> trechos · <b class="mono">${fmtQ(R.reduce((s,t)=>s+t.L,0))} m</b> · <b class="mono">${fmtR(R.reduce((s,t)=>s+t.v,0))}</b></span></div>`+
+   R.slice(0,300).map(t=>{const f=field['l'+t.id]||{};return `<div class="lt" style="border-top:1px solid var(--line);padding:8px 0">
+     <div style="display:flex;justify-content:space-between;gap:8px"><span><i style="display:inline-block;width:14px;height:4px;border-radius:2px;background:${LCOR[t.item]};vertical-align:3px;margin-right:6px"></i><b class="mono">${estF(t.a)} → ${estF(t.b)}</b>${ladoTag(t.lado)}<br><span style="font-size:12px">${esc((Lx.itens.find(r=>r.id===t.item)||{}).nome||t.item)}${t.sub?' ('+t.sub+')':''}</span> <span class="muted mono" style="font-size:11px">${t.cod} · folha ${t.pg}</span></span><span class="mono" style="white-space:nowrap;text-align:right">${fmtQ(t.L)} m<br><span class="muted">${fmtR(t.v)}</span></span></div>${t.obs?`<div style="font-size:12px;margin-top:4px;padding:6px 8px;border-radius:8px;background:rgba(232,134,12,.10)">${esc(t.obs)}</div>`:''}
+     <div style="display:flex;gap:6px 8px;align-items:center;margin-top:6px;flex-wrap:wrap"><span class="seg seg3" data-lk="${t.id}">${[['S','✓','Feito'],['N','✕','Não feito'],['X','–','Não precisa']].map(([v,i,l])=>`<button class="${f.s===v?'on':''}" data-v="${v}" aria-pressed="${f.s===v}"><span class="ic" aria-hidden="true">${i}</span>${l}</button>`).join('')}</span>
+      <span class="pq" data-lk="${t.id}" style="font-size:12px;${f.s==='S'?'':'display:none!important'}">Qtd. feita <input type="number" step="0.1" min="0" value="${f.q!=null&&f.q!==''?f.q:t.L}" style="width:70px;font:inherit;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:2px 4px;background:transparent;color:var(--ink)"> de ${fmtQ(t.L)} m</span>
+      <button class="chip" data-ver="${t.id}">🗺️ ver no projeto</button></div></div>`}).join('')+(R.length>300?'<p class="muted">Mostrando os 300 primeiros; use os filtros.</p>':'')+'</div>';
+  el.innerHTML=h;
+  el.querySelectorAll('[data-lf]').forEach(b=>b.onclick=()=>{linF[b.dataset.lf]=b.dataset.k;drawLin()});
+  el.querySelectorAll('.seg[data-lk] button').forEach(b=>b.onclick=()=>{const id=b.parentNode.dataset.lk,k='l'+id,cur=(field[k]||{}).s,v=cur===b.dataset.v?'':b.dataset.v;setField(k,{s:v,src:'manual'});
+    b.parentNode.querySelectorAll('button').forEach(x=>{x.classList.toggle('on',x.dataset.v===v);x.setAttribute('aria-pressed',x.dataset.v===v)});const pq=el.querySelector(`.pq[data-lk="${id}"]`);if(pq)pq.style.display=v==='S'?'':'none'});
+  el.querySelectorAll('.pq[data-lk] input').forEach(i=>i.onchange=()=>setField('l'+i.parentNode.dataset.lk,{q:Math.max(0,+i.value||0)}));
+  el.querySelectorAll('[data-ver]').forEach(b=>b.onclick=async()=>{const t=T.find(x=>x.id===b.dataset.ver);b.textContent='carregando…';try{const MM=PRMAP||await (await fetch('pr/map.json')).json();const m=MM.find(x=>x.page===t.pg&&t.a>=x.ticks[0][1]-3&&t.a<=x.ticks[x.ticks.length-1][1]+3)||MM.find(x=>x.page===t.pg)||null;const c=m?await cropPage(m,(t.a+t.b)/2):null;if(c){$('#vimg').src=c.d;$('#viewer').classList.add('on')}else toast('Sem recorte para esse trecho.')}catch(e){toast('Não consegui abrir o recorte.')}b.textContent='🗺️ ver no projeto'});
+}
+
+function drawGal(){
+  $('#fotot').innerHTML=`<b>${fotos.length}</b> fotos em <b>${new Set(fotos.map(f=>f.p)).size}</b> pontos${ASSETS?' · para adicionar, abra um ponto no mapa':''}`;
+  $('#gal').innerHTML=fotos.length?fotos.map(f=>{const p=P(f.p);return `<div class="ph" data-id="${f.p}"><img src="${esc(f.url||'/_blob/'+f.asset)}" alt="Foto est. ${esc(p&&p.est)}" loading="lazy"><div><b class="mono">${esc(p&&p.est)}</b> · ${fmtD(f.at)}${geoLink(f.geo)}<br><span class="muted">${esc(f.ia&&f.ia.resumo?f.ia.resumo.slice(0,90):'sem análise')}</span></div></div>`}).join('')
+    :'<p class="muted">Nenhuma foto ainda. Abra um ponto no mapa e toque em “Adicionar foto”.</p>';
+  $('#gal').querySelectorAll('.ph').forEach(t=>t.onclick=()=>openP(+t.dataset.id,{ids:[...new Set(fotos.map(f=>f.p))],label:'fotos'}));
+}
+
+// ---------- ANÁLISE ----------
+function agg(list){const g={};list.forEach(x=>{const c=g[x.cod]||(g[x.cod]={cod:x.cod,s:x.s,u:x.u,pu:x.pu,q:0,v:0,n:0});c.q+=x.q;c.v+=x.v;c.n++});return Object.values(g).sort((a,b)=>b.v-a.v)}
+let parecerTxt='';
+function drawAnalise(){
+  const S=D.pend.filter(x=>marked(x)==='S').map(x=>({...x,cod:codOf(x),s:nomeOf(x),pu:puOf(x),q:qtyOf(x),v:execV(x)})),N=D.pend.filter(x=>marked(x)==='N'),X=D.pend.filter(x=>marked(x)==='X'),U=D.pend.filter(x=>!marked(x));
+  const sum=a=>a.reduce((s,x)=>s+x.v,0),tot=sum(D.pend);
+  const naov=[...D.points].filter(p=>p.pv>0&&!vistoriado(p)).sort((a,b)=>b.pv-a.pv).slice(0,12);
+  const uS=D.urb?D.urb.redes.filter(r=>!r.g&&um(r.id)==='S').flatMap(r=>{const P={400:[['12.06.009','Corpo BSTC Ø0,40',152],['12.09.001','Berço BSTC Ø0,40',61.2]],600:[['12.06.014','Corpo BSTC Ø0,60',239.15],['12.09.002','Berço BSTC Ø0,60',101.81]],800:[['12.06.018','Corpo BSTC Ø0,80',465.26],['12.09.003','Berço BSTC Ø0,80',154.62]]}[r.dia];return P.map(([cod,s,pu])=>({cod,s:s+' (rede urbana)',u:'M',pu,q:r.L,v:r.L*pu}))}):[];
+  const lS=D.lin?D.lin.trechos.filter(t=>lm(t)==='S').map(t=>({cod:t.cod,s:((D.lin.itens.find(r=>r.id===t.item)||{}).nome||t.item)+' (linear)',u:'M',pu:t.v/t.L,q:linQ(t),v:linQ(t)*t.v/t.L})):[];
+  const lN=D.lin?D.lin.trechos.filter(t=>lm(t)==='N'):[];
+  const xS=extras.map(x=>{const it=D.itens[x.cod]||{};return {cod:x.cod,s:(TNOME[x.cod]||it.s||x.cod),u:it.u||'',pu:it.pu||0,q:+x.q,v:(+x.q)*(it.pu||0)}});
+  const fn=agg(N),fs=agg(S.concat(uS).concat(lS).concat(xS));
+  const trN={};N.forEach(x=>{const k=trechoDe(P(x.p));trN[k]=(trN[k]||0)+x.v});
+  let h=`<div class="card"><b>Andamento da vistoria</b>
+   <div class="prog" style="margin-top:8px">
+    <div><b class="mono" style="font-size:18px;color:var(--ok)">${fmtR(sum(S)+sum(xS))}</b><br><span class="muted" style="font-size:12px">executado → lançar na próxima medição (${S.length+xS.length} itens)</span></div>
+    <div><b class="mono" style="font-size:18px;color:var(--sem)">${fmtR(sum(N))}</b><br><span class="muted" style="font-size:12px">não feito → frente de serviço (${N.length} itens)</span></div>
+    <div><b class="mono" style="font-size:18px;color:#6b716c">${fmtR(sum(X))}</b><br><span class="muted" style="font-size:12px">não precisa fazer → sai da pendência (${X.length} itens)</span></div>
+    <div><b class="mono" style="font-size:18px">${fmtR(sum(U))}</b><br><span class="muted" style="font-size:12px">ainda não conferido (${U.length} itens)</span></div>
+    <div><b class="mono" style="font-size:18px">${Math.round((tot-sum(U))/tot*100)}%</b><br><span class="muted" style="font-size:12px">do valor pendente já conferido</span></div>
+   </div>
+   <div class="bar" style="margin-top:10px;display:flex"><div style="width:${sum(S)/tot*100}%;background:var(--ok)"></div><div style="width:${sum(N)/tot*100}%;background:var(--sem)"></div><div style="width:${sum(X)/tot*100}%;background:#6b716c"></div></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${DL?'<button class="btn" id="xl2">Baixar Excel da vistoria</button>':''}${SAMPLE?'<button class="btn ghost" id="gp">Gerar parecer com Claude</button>':''}</div>
+   <div id="pout" class="parecer" style="margin-top:10px">${parecerTxt?esc(parecerTxt):''}</div></div>`;
+  h+=`<div class="card" style="border:1.5px solid var(--acc)"><b style="font-size:15px">📄 Relatório final para apresentar</b><p class="muted" style="font-size:12px;margin:2px 0 8px">PDF com os croquis dos pontos que têm foto de campo, em ordem de estaca: recorte do projeto, quadro projeto × medido, fotos e a vistoria de cada ponto.</p>
+   <label style="font-size:13px;display:block;margin-bottom:8px">Responsável técnico<br><input id="rresp" value="${esc((cfg&&cfg.resp)||'')}" placeholder="Nome e cargo (sai na capa e na assinatura)" style="width:100%;font:inherit;padding:7px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink)"></label>
+   <div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin-bottom:10px">
+    <label><input type="checkbox" id="rgps"> Data, hora e GPS embaixo de cada foto</label></div>
+   <label style="font-size:13px;display:block;margin-bottom:10px">Croquis de quais pontos?<br><select id="rmod" style="width:100%;font:inherit;padding:7px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)"><option value="vist">Só os pontos com foto (${pontosCroqui('vist').length} pontos)</option><option value="todos">Todos com pendência (${pontosCroqui('todos').length} pontos)</option></select></label>
+   ${DL?'<button class="btn" id="brel" style="width:100%;padding:12px;font-size:15px">📄 Gerar relatório final (PDF)</button>':'<p class="muted" style="font-size:12px">Para baixar o relatório, abra a página no claude.ai.</p>'}</div>`;
+  h+=`<div class="card"><b>Memória da próxima medição</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Itens marcados como executados, somados por serviço.</p>`+
+   (fs.length?`<div class="tw"><table><tr><th>Código</th><th>Serviço</th><th class="n">Qtd.</th><th class="n">Valor</th><th class="n">Pontos</th></tr>${fs.map(c=>`<tr><td class="mono">${c.cod}</td><td>${esc(c.s)}</td><td class="n">${fmtQ(c.q)} ${c.u}</td><td class="n">${fmtR(c.v)}</td><td class="n">${c.n}</td></tr>`).join('')}</table></div>`:'<p class="muted">Nada marcado como executado ainda.</p>')+'</div>';
+  h+=`<div class="card"><b>Frente de serviço (não executado)</b>`+
+   (fn.length?`<div class="tw"><table><tr><th>Serviço</th><th class="n">Qtd.</th><th class="n">Valor</th></tr>${fn.map(c=>`<tr><td>${esc(c.s)}</td><td class="n">${fmtQ(c.q)} ${c.u}</td><td class="n">${fmtR(c.v)}</td></tr>`).join('')}</table></div>${lN.length?`<p style="font-size:13px">Lineares não feitos: <b>${lN.length} trechos · ${fmtQ(lN.reduce((s,t)=>s+t.L,0))} m · ${fmtR(lN.reduce((s,t)=>s+t.v,0))}</b> (ver aba Lineares)</p>`:''}<p class="muted" style="font-size:12px">Por trecho: ${Object.keys(trN).sort(trSort).map(k=>`${isNaN(k)?k:k+'–'+(+k+50)}: ${fmtR(trN[k])}`).join(' · ')}</p>`:'<p class="muted">Nada marcado como não feito ainda.</p>')+'</div>';
+  if(X.length)h+=`<div class="card"><b>Não precisa fazer</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Itens do projeto que não serão executados. Bom registrar o motivo e, se for o caso, pedir a supressão ao fiscal.</p><table>${X.map(x=>`<tr data-id="${x.p}" style="cursor:pointer"><td class="mono" style="white-space:nowrap">${esc(P(x.p).est.split(' ')[0])}</td><td style="font-size:12px">${esc(x.s)}<br><span class="muted">${esc((field[x.k]||{}).o||'sem motivo registrado')}</span></td><td class="n">${fmtR(x.v)}</td></tr>`).join('')}</table></div>`;
+  h+=`<div class="card"><b>Próximos pontos a vistoriar</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Maior valor pendente, ainda sem foto nem marcação.</p><table>${naov.map(p=>`<tr data-id="${p.id}" style="cursor:pointer"><td class="mono">${esc(p.est)}</td><td>${esc(p.bg||'–')}</td><td><span class="tag t-${p.st}">${SN[p.st]}</span></td><td class="n">${fmtR(p.pv)}</td></tr>`).join('')}</table></div>`;
+  h=cardOffline()+h;
+  $('#anc').innerHTML=h;
+  ligarOffline();
+  $('#anc').querySelectorAll('tr[data-id]').forEach(t=>t.onclick=()=>openP(+t.dataset.id,{ids:[...$('#anc').querySelectorAll('tr[data-id]')].map(r=>+r.dataset.id),label:'a vistoriar'}));
+  if($('#xl2'))$('#xl2').onclick=baixarXL;
+  if($('#gp'))$('#gp').onclick=gerarParecer;
+  if($('#brel'))$('#brel').onclick=gerarRelatorio;
+}
+// ================= MODO OFFLINE (pacote celular ↔ sistema) =================
+const OFF=!!window.OFFLINE;let onMsg='';
+function cardOffline(){
+  if(OFF)return `<div class="card" style="border:1.5px solid var(--acc)"><b style="font-size:15px">📴 Modo offline</b>
+    <p class="muted" style="font-size:12px;margin:2px 0 8px">Tudo que você marca e fotografa fica salvo neste celular, sem internet. Quando tiver sinal, exporte o pacote e importe no sistema online (claude.ai).</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="offexp">📤 Exportar para o sistema</button>
+    <label class="btn ghost" style="cursor:pointer">📥 Atualizar com o sistema<input type="file" id="offimp" accept=".json,application/json" style="display:none"></label>
+    <button class="btn ghost" id="offlimpa">✔ Já importei no sistema</button></div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0" id="offst"></p></div>`;
+  return `<div class="card"><b style="font-size:15px">📲 Celular sem internet</b>
+    <p class="muted" style="font-size:12px;margin:2px 0 8px">Antes de ir a campo, leve o estado atual para o modo offline. Na volta, importe o pacote do celular: marcações, observações, serviços extras e fotos entram de uma vez.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${DL?'<button class="btn ghost" id="onexp">📲 Levar para o modo offline</button>':''}
+    <label class="btn" style="cursor:pointer">📥 Importar do modo offline<input type="file" id="onimp" accept=".json,application/json" style="display:none"></label></div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0" id="onst">${esc(onMsg)}</p></div>`;
+}
+const lerJSON=f=>new Promise((ok,err)=>{const r=new FileReader();r.onload=()=>{try{ok(JSON.parse(r.result))}catch(e){err(e)}};r.onerror=err;r.readAsText(f)});
+function ligarOffline(){
+  const dt=new Date().toISOString().slice(0,16).replace('T',' ').replace(':','h');
+  if(OFF){
+    const st=()=>{const d=OFFLINE.store['__dirty/x']||{},n=Object.keys(d).length;$('#offst').textContent=n?`${n} registro(s) feitos aqui ainda não importados no sistema.`:'Nada pendente para enviar.'};st();
+    $('#offexp').onclick=async()=>{const pk=await OFFLINE.exportar();if(!Object.keys(pk.campo).length&&!pk.fotos.length&&!Object.keys(pk.extras).length&&!Object.keys(pk.diario||{}).length){toast('Nada novo para exportar.');return}
+      await DL.save({filename:`Pacote offline Fruteiras ${dt}.json`,data:new Blob([JSON.stringify(pk)],{type:'application/json'})});toast(`Pacote com ${Object.keys(pk.campo).length} marcações e ${pk.fotos.length} fotos.`)};
+    $('#offimp').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const pk=await lerJSON(f);const n=await OFFLINE.importar(pk);toast(`${n} registro(s) atualizados com o sistema.`)}catch(er){toast('Arquivo inválido.')}e.target.value=''};
+    $('#offlimpa').onclick=async()=>{if(!confirm('Confirma que já importou o pacote no sistema online? As marcações continuam aqui, só deixam de ir no próximo pacote.'))return;await OFFLINE.limparEnviados();st();toast('Pronto.')};
+    return}
+  if($('#onexp'))$('#onexp').onclick=async()=>{const pk={v:1,de:'online',at:new Date().toISOString(),campo:{},extras:{}};
+    Object.entries(field).forEach(([k,v])=>{if(v&&v.s!==undefined||v&&v.cod)pk.campo['k'+k]=v});extras.forEach(x=>{const {id,...r}=x;pk.extras[id]=r});
+    await DL.save({filename:`Levar para offline Fruteiras ${dt}.json`,data:new Blob([JSON.stringify(pk)],{type:'application/json'})});onMsg=`${Object.keys(pk.campo).length} marcações e ${extras.length} serviços extras no pacote. Abra o app offline e toque em "Atualizar com o sistema".`;$('#onst').textContent=onMsg};
+  $('#onimp').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const st=$('#onst');
+    if(!DB){toast('Abra pelo claude.ai com internet para importar.');return}
+    let pk;try{pk=await lerJSON(f)}catch(er){toast('Arquivo inválido.');return}
+    if(pk.de!=='offline'){toast('Esse não é um pacote do modo offline.');return}
+    let nc=0,nf=0,nx=0,pul=0;
+    for(const [id,v] of Object.entries(pk.campo||{})){const k=id.slice(1),cur=field[k];if(cur&&cur.at&&v.at&&cur.at>v.at){pul++;continue}
+      try{await DB.doc('campo/'+id).set({...v,by:v.by==='offline'?(UID||''):v.by,src:v.src||'manual'});nc++}catch(er){}}
+    for(const [id,v] of Object.entries(pk.extras||{})){try{await DB.doc('extras/'+id).set({...v,by:v.by==='offline'?(UID||''):v.by});nx++}catch(er){}}
+    for(const fo of pk.fotos||[]){st.textContent=`Enviando fotos ${nf+1}/${pk.fotos.length}…`;
+      if(fotos.some(x=>x.oid===fo.id)||!fo.img)continue;
+      try{const blob=await (await fetch(fo.img)).blob();const up=await ASSETS.upload(blob);
+        const {url,asset,...d}=fo.doc;await DB.collection('fotos').add({...d,by:d.by==='offline'?(UID||''):d.by,asset:up.id,url:up.url,oid:fo.id,up:new Date().toISOString()});nf++}catch(er){}}
+    let nd=0;for(const [id,o] of Object.entries(pk.diario||{})){try{const cur=diario.find(z=>'d'+z.data===id||z.id===id);if(cur&&cur.atualizado&&o.doc.atualizado&&cur.atualizado>o.doc.atualizado)continue;
+      const fts=[];for(let i=0;i<(o.doc.fotos||[]).length;i++){const f=o.doc.fotos[i],im=(o.imgs||[])[i];if(im){try{const up=await ASSETS.upload(await (await fetch(im)).blob());fts.push({...f,asset:up.id,url:up.url})}catch(er){}}else if(f.url&&!f.url.startsWith('la/'))fts.push(f)}
+      await DB.doc('diario/'+id).set({...o.doc,fotos:fts,by:o.doc.by==='offline'?(UID||''):o.doc.by});nd++}catch(er){}}
+    let ja=[];try{ja=JSON.parse(localStorage.getItem('fru-pacotes')||'[]')}catch(er){}
+    if(!ja.includes(pk.at))for(const h of pk.hist||[]){try{await DB.collection('hist').add({...h,by:h.by==='offline'?(UID||''):h.by,det:(h.det||'')+' (offline)'})}catch(er){}}
+    try{localStorage.setItem('fru-pacotes',JSON.stringify(ja.concat(pk.at).slice(-50)))}catch(er){}
+    onMsg=`Importado: ${nc} marcações, ${nx} serviços extras, ${nf} fotos${nd?` e ${nd} dia(s) do diário`:''}.${pul?` ${pul} marcação(ões) mantidas porque o sistema tinha uma mais nova.`:''}${ja.includes(pk.at)?' (este pacote já tinha sido importado antes; nada foi duplicado)':''}`;st.textContent=onMsg;toast('Pacote do celular importado.');};
+}
+async function gerarParecer(){
+  const b=$('#gp');if(b){b.disabled=true;b.innerHTML='<span class="spin"></span> Gerando…'}
+  const S=agg(D.pend.filter(x=>marked(x)==='S')),N=agg(D.pend.filter(x=>marked(x)==='N')),XX=agg(D.pend.filter(x=>marked(x)==='X'));
+  const U=D.pend.filter(x=>!marked(x));
+  const obs=D.pend.filter(x=>(field[x.k]||{}).o).slice(0,40).map(x=>`- ${P(x.p).est} ${x.s}: ${field[x.k].o}`).join('\n');
+  const ia=fotos.filter(f=>f.ia&&f.ia.resumo).slice(0,30).map(f=>`- ${P(f.p).est}: ${f.ia.resumo}${f.ia.duvidas&&f.ia.duvidas.length?' | conferir: '+f.ia.duvidas.join('; '):''}`).join('\n');
+  const L=a=>a.map(c=>`- ${c.cod} ${c.s}: ${fmtQ(c.q)} ${c.u} = ${fmtR(c.v)} (${c.n} pontos)`).join('\n')||'(nenhum)';
+  const prompt=`Você é engenheiro de medição de obra rodoviária. Escreva um parecer curto e objetivo, em português do Brasil, sobre a vistoria de drenagem da obra ES-475 Castelo–Fruteiras (contrato 007/2014), para o engenheiro responsável levar à reunião de medição.
+Dados (não invente números além destes):
+Pendência total pelo projeto: ${fmtR(D.pend.reduce((s,x)=>s+x.v,0))} em ${D.pend.length} itens. Ainda não conferidos: ${U.length} itens, ${fmtR(U.reduce((s,x)=>s+x.v,0))}.
+EXECUTADO, a lançar na próxima medição:
+${L(S)}
+NÃO EXECUTADO (frente de serviço):
+${L(N)}
+NÃO PRECISA FAZER (dispensado em campo, sugerir supressão):
+${L(XX)}
+Observações de campo:
+${obs||'(nenhuma)'}
+Análises de fotos:
+${ia||'(nenhuma)'}
+Rede urbana (projeto × medido acumulado): ${D.urb?D.urb.balanco.filter(b=>b.acum!=null).map(b=>`${b.s}: projeto ${fmtQ(b.proj)} ${b.u}, medido ${fmtQ(b.acum)}`).join('; '):''}. Trechos de rede conferidos: ${D.urb?D.urb.redes.filter(r=>um(r.id)).length:0} de ${D.urb?D.urb.redes.length:0}.
+Saldo contratual insuficiente (exige remanejamento): ${D.res.filter(r=>!String(r[8]).startsWith('SIM')).map(r=>r[1]).join('; ')}.
+Estrutura: 1) Resumo em 2 frases. 2) O que lançar na próxima medição. 3) Frente de serviço. 4) Riscos e o que conferir. 5) Próximos passos (3 itens). Texto simples, sem markdown pesado, no máximo 250 palavras.`;
+  try{parecerTxt='';
+    const r=await SAMPLE(prompt,{modelTier:'default',onText:({text})=>{parecerTxt=text;const out=$('#pout');if(out)out.textContent=text}});
+    parecerTxt=r.text;const out=$('#pout');if(out)out.textContent=r.text;saveCfg({parecer:parecerTxt});
+  }catch(e){toast(e&&e.code==='rate_limited'?'Aguarde um pouco e tente de novo.':'Não foi possível gerar o parecer.')}
+  const b2=$('#gp');if(b2){b2.disabled=false;b2.textContent='Gerar parecer com Claude'}
+}
+
+// ---------- PENDÊNCIAS ----------
+let pf={tipo:'todos',campo:'todos'};
+function drawPendF(){
+  const tipos=[['todos','Todos'],['bueiro','Bueiro'],['descida','Descida'],['dissipador','Dissipador'],['entrada','Entrada']];
+  const campo=[['todos','Qualquer'],['S','Feito'],['N','Não feito'],['X','Não precisa'],['vazio','Não conferido']];
+  $('#pendf').innerHTML=tipos.map(([k,l])=>`<button class="chip ${pf.tipo===k?'on':''}" data-g="tipo" data-k="${k}">${l}</button>`).join('')+
+   '<span style="width:100%"></span>'+campo.map(([k,l])=>`<button class="chip ${pf.campo===k?'on':''}" data-g="campo" data-k="${k}">${l}</button>`).join('');
+  $('#pendf').querySelectorAll('button').forEach(b=>b.onclick=()=>{pf[b.dataset.g]=b.dataset.k;drawPendF();drawPend()});
+}
+function pendRows(){
+  return D.pend.filter(x=>{const s=x.s.toLowerCase();
+    if(pf.tipo==='bueiro'&&!/corpo|berço|boca|caixa/.test(s))return false;
+    if(pf.tipo==='descida'&&(!/descida d/.test(s)||/entrada/.test(s)))return false;
+    if(pf.tipo==='dissipador'&&!/dissipador/.test(s))return false;
+    if(pf.tipo==='entrada'&&!/entrada|saída/.test(s))return false;
+    const f=marked(x);if(pf.campo==='vazio'&&f)return false;if(['S','N','X'].includes(pf.campo)&&f!==pf.campo)return false;return true});
+}
+function drawPend(){
+  const r=pendRows(),tot=r.reduce((s,x)=>s+x.v,0),lanc=r.filter(x=>marked(x)==='S').reduce((s,x)=>s+execV(x),0);
+  $('#pendtot').innerHTML=`<b>${r.length}</b> itens · <b class="mono">${fmtR(tot)}</b>${lanc?` · <span style="color:var(--ok)">${fmtR(lanc)} já executado, a lançar</span>`:''}${extras.filter(x=>!x.disc).length?` · <span style="color:var(--extra)">+ ${fmtR(extras.filter(x=>!x.disc).reduce((t,x)=>t+(+x.q)*((D.itens[x.cod]||{}).pu||0),0))} fora do projeto</span>`:''}`;
+  $('#pendt').innerHTML='<tr><th>Estaca</th><th>Serviço</th><th class="n">Qtd.</th><th class="n">Valor</th><th>Campo</th></tr>'+
+   r.map(x=>{const p=P(x.p),f=marked(x);return `<tr data-id="${x.p}" style="cursor:pointer"><td class="mono">${esc(p.est)}${fotosDe(p.id).length?' 📷':''}</td><td>${f==='S'&&codOf(x)!==x.cod?`<b style="color:var(--extra)">${esc(nomeOf(x))}</b> <span class="muted" style="font-size:11px">(projeto: ${esc(x.s)})</span>`:esc(x.s)}${ladoTag((field[x.k]||{}).lado||x.lado)}<br><span class="muted" style="font-size:11px">${esc(x.t)}</span></td><td class="n">${fmtQ(f==='S'?qtyOf(x):x.q)} ${x.u}</td><td class="n">${fmtR(f==='S'?execV(x):x.v)}</td><td>${f==='S'?'<span class="tag t-ok">Feito</span>':f==='N'?'<span class="tag t-sem">Não</span>':f==='X'?'<span class="tag" style="background:#6b716c">Dispensa</span>':'<span class="muted">–</span>'}</td></tr>`}).join('');
+  $('#pendt').querySelectorAll('tr[data-id]').forEach(t=>t.onclick=()=>openP(+t.dataset.id,{ids:[...new Set(pendRows().map(x=>x.p))],label:'pendências'}));
+}
+const pendLinha=x=>{const p=P(x.p),f=field[x.k]||{};return {'Ponto':x.p,'Estaca':p.est,'Bueiros':p.bg||'','Código':x.cod,'Serviço':x.s,'Lado':x.lado||'','Un.':x.u,'Qtd. pendente':x.q,'Preço unit. (R$)':x.pu,'Valor (R$)':Math.round(x.v*100)/100,'Tipo':x.t,'Executado em campo':f.s==='S'?'Feito':f.s==='N'?'Não feito':f.s==='X'?'Não precisa fazer':'','Executado como':f.s==='S'?codOf(x)+' '+nomeOf(x):'','Qtd. feita':f.s==='S'?qtyOf(x):'','Valor feito (R$)':f.s==='S'?Math.round(execV(x)*100)/100:'','Origem':f.src==='ia'?'análise de foto':f.s?'manual':'','Observação':f.o||'','Fotos':fotosDe(x.p).length}};
+$('#cp1').onclick=()=>{const rows=pendRows().map(pendLinha);const keys=Object.keys(rows[0]||pendLinha(D.pend[0]));
+  const txt=[keys.join('\t')].concat(rows.map(r=>keys.map(k=>String(r[k]).replace(/\./g,typeof r[k]==='number'?',':'.').replace(/\s+/g,' ')).join('\t'))).join('\n');
+  navigator.clipboard.writeText(txt).then(()=>toast('Copiado. Cole no Excel.'),()=>toast('Não foi possível copiar aqui.'))};
+$('#xl1').onclick=baixarXL;
+async function baixarXL(){
+  if(!DL||!window.XLSX){toast('Download indisponível aqui.');return}
+  const wb=XLSX.utils.book_new();
+  const S=agg(D.pend.filter(x=>marked(x)==='S')).map(c=>({'Código':c.cod,'Serviço':c.s,'Un.':c.u,'Quantidade':Math.round(c.q*100)/100,'Preço unit. (R$)':c.pu,'Valor (R$)':Math.round(c.v*100)/100,'Nº de pontos':c.n}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(S.length?S:[{'Código':'(nada marcado como executado)'}]),'A lançar (resumo)');
+  const SL=D.pend.filter(x=>marked(x)==='S').map(pendLinha);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(SL.length?SL:[{'Ponto':'(vazio)'}]),'A lançar (por estaca)');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.pend.map(pendLinha)),'Todas as pendências');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(fotos.length?fotos.map(f=>({'Ponto':f.p,'Estaca':P(f.p).est,'Data da foto':fmtD(f.at),'Análise':f.ia?f.ia.resumo:'','Conferir':f.ia&&f.ia.duvidas?f.ia.duvidas.join('; '):''})):[{'Ponto':'(sem fotos)'}]),'Fotos');
+  if(D.urb)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.urb.redes.map(r=>({'Perímetro':r.per,'Rede':r.id,'PV início':r.pv,'Estaca aprox.':r.est?Math.round(r.est*100)/100:'','Comprimento (m)':r.L,'Ø (mm)':r.dia,'Folha':r.folha,'Fonte do comprimento':r.src,'Em campo':um(r.id)==='S'?'Existe':um(r.id)==='N'?'Não existe':'','Valor corpo+berço (R$)':r.v}))),'Rede urbana');
+  const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  const d=new Date().toISOString().slice(0,10);
+  try{await DL.save({filename:`Vistoria drenagem Fruteiras ${d}.xlsx`,data:new Blob([buf])})}catch(e){if(e&&e.code!=='declined')toast('Não foi possível baixar.')}
+}
+
+// ---------- abas fixas ----------
+function drawPrio(){
+  const top=[...D.points].sort((a,b)=>b.pv-a.pv).slice(0,25);
+  $('#priot').innerHTML='<tr><th>#</th><th>Estaca</th><th>Bueiros</th><th>Situação</th><th class="n">Pendente</th></tr>'+
+   top.map((p,i)=>`<tr data-id="${p.id}" style="cursor:pointer"><td>${i+1}</td><td class="mono">${esc(p.est)}</td><td>${esc(p.bg||'–')}</td><td><span class="tag t-${p.st}">${SN[p.st]}</span></td><td class="n">${fmtR(p.pv)}</td></tr>`).join('');
+  $('#priot').querySelectorAll('tr[data-id]').forEach(t=>t.onclick=()=>openP(+t.dataset.id,{ids:[...$('#priot').querySelectorAll('tr[data-id]')].map(r=>+r.dataset.id),label:'prioridades'}));
+}
+function drawAlertas(){
+  const auto=D.points.filter(p=>p.aa.length);
+  let h=`<h3 style="margin:0 0 4px;font-size:15px">Regras automáticas · ${auto.reduce((s,p)=>s+p.aa.length,0)}</h3><p class="muted" style="font-size:12px;margin:0 0 6px">Combinações que costumam indicar serviço esquecido ou medição errada.</p><table>`+
+   auto.map(p=>`<tr data-id="${p.id}" style="cursor:pointer"><td class="mono" style="white-space:nowrap">${esc(p.est)}</td><td>${p.aa.map(esc).join('<br>')}</td></tr>`).join('')+'</table>';
+  h+=`<h3 style="margin:18px 0 4px;font-size:15px">Escritos na memória · ${D.alr.length}</h3><p class="muted" style="font-size:12px;margin:0 0 6px">Não executado, não conferido, estorno ou conferir: risco de glosa.</p><div class="tw"><table><tr><th>Aba</th><th>Estaca</th><th class="n">Qtd.</th><th>Observação</th></tr>`+
+   D.alr.map(r=>`<tr><td class="mono">${esc(r[0])}<br><span class="muted">l.${r[1]}</span></td><td class="mono">${esc(r[2])}</td><td class="n">${fmtQ(r[4])}</td><td>${esc(r[6])}</td></tr>`).join('')+'</table></div>';
+  $('#alc').innerHTML=h;$('#alc').querySelectorAll('tr[data-id]').forEach(t=>t.onclick=()=>openP(+t.dataset.id,{ids:[...new Set([...$('#alc').querySelectorAll('tr[data-id]')].map(r=>+r.dataset.id))],label:'alertas'}));
+}
+function drawExtra(){
+  $('#extot').innerHTML=`<b>${D.msp.length}</b> linhas · <b class="mono">${fmtR(D.msp.reduce((s,r)=>s+(+r[5]||0),0))}</b>`;
+  $('#ext').innerHTML='<tr><th>Estaca</th><th>Aba</th><th class="n">Valor</th><th>Observação</th><th>Ponto mais próximo</th></tr>'+
+   D.msp.map(r=>`<tr><td class="mono">${esc(r[2])}</td><td class="mono">${esc(r[0])}</td><td class="n">${fmtR(+r[5])}</td><td>${esc(r[6]||'')}</td><td class="muted" style="font-size:12px">${esc(r[7]||'')}${r[8]?' ('+fmtQ(r[8])+' m)':''}</td></tr>`).join('');
+}
+function drawSaldo(){
+  $('#saldot').innerHTML='<tr><th>Serviço</th><th class="n">Saldo</th><th class="n">Pendente</th><th class="n">Depois</th><th>Comporta?</th></tr>'+
+   D.res.map(r=>`<tr><td>${esc(r[1])}<br><span class="muted mono" style="font-size:11px">${esc(r[0])} · ${esc(r[2])}</span></td><td class="n">${fmtQ(r[4])}</td><td class="n">${fmtQ(r[5])}</td><td class="n" style="color:${r[7]<0?'var(--sem)':'inherit'}">${fmtQ(r[7])}</td><td>${String(r[8]).startsWith('SIM')?'<span class="tag t-ok">Sim</span>':'<span class="tag t-sem">Não</span>'}</td></tr>`).join('');
+}
+function drawSobre(){
+  let h='';if(D.pdfinfo){h+=`<h3 style="font-size:15px;margin:0 0 6px">Conferência com o PDF do projeto (Volume 2)</h3><p style="font-size:13px;margin:6px 0">Incluídos: BG-48 (folha 28, faltava na conferência) e 7 pontos de drenagem das interseções 01 e 05 (folhas IN-05, IN-06 e IN-10).</p>`+['numeracao','lineares','urbana'].map(k=>`<p style="font-size:13px;margin:6px 0">${esc(D.pdfinfo[k])}</p>`).join('')}
+  if(D.conf_pdf){h+=`<h3 style="font-size:15px;margin:14px 0 6px">Conferência completa projeto × sistema × memória (${esc(D.conf_pdf.data)})</h3>`+['bg','disp','oac'].map(k=>`<p style="font-size:13px;margin:6px 0">${esc(D.conf_pdf[k])}</p>`).join('')}
+  D.parecer.forEach(r=>{if(!r.length)return;const t=String(r[0]);
+    if(/^\d\.\s/.test(t)){h+=`<h3 style="font-size:15px;margin:16px 0 6px">${esc(t)}</h3>`;return}
+    if(r.length>=2&&typeof r[1]==='number'){h+=`<div style="display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:5px 0;font-size:13px"><span>${esc(t)}<br><span class="muted" style="font-size:12px">${esc(r[2]||'')}</span></span><b class="mono">${r[1]>1000?fmtR(r[1]):r[1]}</b></div>`;return}
+    h+=`<p style="font-size:13px;margin:6px 0">${esc(t)}</p>`});
+  $('#sobre').innerHTML=h;
+}
+</script>
+</body>
+</html>

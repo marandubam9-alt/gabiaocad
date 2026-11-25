@@ -21,8 +21,9 @@ const coll=col=>{const q={path:col,doc:id=>docRef(col+'/'+(id||rid())),add:async
   onSnapshot:cb=>{subs.push({col,cb});ready.then(()=>cb(snapC(col)));return()=>{}}};q.orderBy=()=>q;q.limit=()=>q;q.where=()=>q;return q};
 const db={doc:docRef,collection:coll};
 // fotos: guardadas no Cache do aparelho, servidas pelo service worker em la/<id>
-const assets={upload:async b=>{const id='off'+rid();const url=new URL('la/'+id,location.href).href;const c=await caches.open('fru-fotos');await c.put(url,new Response(b,{headers:{'Content-Type':b.type||'image/jpeg'}}));return {id,url:'la/'+id}}};
-const downloads={save:async({filename,data})=>{const f=new File([data],filename,{type:data.type||'application/octet-stream'});
+const assets={upload:async b=>{const id='off'+rid();if(window.DEMO||!(navigator.serviceWorker&&navigator.serviceWorker.controller)){const u=await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.readAsDataURL(b)});return {id,url:u}}const url=new URL('la/'+id,location.href).href;const c=await caches.open('fru-fotos');await c.put(url,new Response(b,{headers:{'Content-Type':b.type||'image/jpeg'}}));return {id,url:'la/'+id}}};
+const REAL=window.claude;
+const downloads={save:async({filename,data})=>{try{if(REAL&&REAL.use){const dl=await REAL.use('downloads');if(dl)return await dl.save({filename,data})}}catch(e){if(e&&e.code==='declined')throw e}const f=new File([data],filename,{type:data.type||'application/octet-stream'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:filename});return {status:'saved'}}catch(e){if(e&&e.name==='AbortError')throw {code:'declined'}}}
   const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1000);return {status:'saved'}}};
 const user={can:async()=>true,id:async()=>'offline',profiles:async ids=>Object.fromEntries((Array.isArray(ids)?ids:[ids]).map(i=>[i,{id:i,name:i==='offline'?'Celular (offline)':''}]))};

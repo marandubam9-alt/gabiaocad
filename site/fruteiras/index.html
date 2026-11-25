@@ -13,7 +13,8 @@
 <script src="local-claude.js"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));</script>
 
-<title>Offline · Medição Fruteiras – Drenagem</title>
+<title>Offline · MediçãoCERTA · ES-475 Castelo–Fruteiras</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' aria-hidden='true'><rect x='2' y='2' width='60' height='60' rx='14' fill='%2314365c'/><g stroke='%237fb3dd' stroke-width='2.5' stroke-linecap='round'><line x1='14' y1='47' x2='14' y2='53'/><line x1='23' y1='49' x2='23' y2='53'/><line x1='32' y1='47' x2='32' y2='53'/><line x1='41' y1='49' x2='41' y2='53'/><line x1='50' y1='47' x2='50' y2='53'/><line x1='12' y1='53' x2='52' y2='53'/></g><path d='M17 29 L27 39 L47 17' fill='none' stroke='%233ccf7f' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jspdf.plugin.autotable.min.js"></script>
@@ -112,6 +113,20 @@ textarea{width:100%;font:inherit;font-size:13px;border:1px solid var(--line);bor
 .ph{position:relative}
 .navb{position:sticky;bottom:-28px;margin:16px -14px -28px;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
 .navb .btn{padding:11px 8px;font-size:14px}.navb .btn:disabled{opacity:.35}
+.cfm{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+.cfm-b{background:var(--card);color:var(--ink);border-radius:14px;padding:18px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.cfm-b p{margin:0 0 16px;font-size:15px}.cfm-b div{display:flex;gap:8px;justify-content:flex-end}.cfm-b .btn{min-height:44px;padding:10px 16px}
+/* ---- marca MediçãoCERTA ---- */
+.brand{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.brand .lg{width:28px;height:28px;flex:none}
+.wm{font-size:17px;letter-spacing:-.01em;color:var(--ink)}.wm b{color:#2fae6a;font-weight:700}
+@media (prefers-color-scheme:dark){.wm b{color:#3ccf7f}}
+header h1{font-size:20px}
+.splash{position:fixed;inset:0;z-index:60;background:#14365c;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;transition:opacity .35s}
+.splash .lg2{width:84px;height:84px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.25))}.splash .lg2 rect{fill:#1b4775}
+.splash .wm2{font-size:28px;color:#fff;margin-top:12px}.splash .wm2 b{color:#3ccf7f}
+.splash p{margin:6px 0 0;color:#a9c4de;font-size:14px}
+.splash.off{opacity:0;pointer-events:none}
 /* ---- navegação por áreas ---- */
 main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,.06)}
@@ -138,9 +153,10 @@ nav#tabs.hide{display:none}
 </style>
 </head>
 <body>
+<div id="splash" class="splash"><div><svg class="lg2" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="#14365c"/><g stroke="#7fb3dd" stroke-width="2.5" stroke-linecap="round"><line x1="14" y1="47" x2="14" y2="53"/><line x1="23" y1="49" x2="23" y2="53"/><line x1="32" y1="47" x2="32" y2="53"/><line x1="41" y1="49" x2="41" y2="53"/><line x1="50" y1="47" x2="50" y2="53"/><line x1="12" y1="53" x2="52" y2="53"/></g><path d="M17 29 L27 39 L47 17" fill="none" stroke="#3ccf7f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="wm wm2">Medição<b>CERTA</b></div><p>Conferência de medição de obra</p></div></div>
 <div id="warn" class="warn" role="status" aria-live="polite"></div>
 <header>
-  <small>Sistema de medição · drenagem</small>
+  <div class="brand"><svg class="lg" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="#14365c"/><g stroke="#7fb3dd" stroke-width="2.5" stroke-linecap="round"><line x1="14" y1="47" x2="14" y2="53"/><line x1="23" y1="49" x2="23" y2="53"/><line x1="32" y1="47" x2="32" y2="53"/><line x1="41" y1="49" x2="41" y2="53"/><line x1="50" y1="47" x2="50" y2="53"/><line x1="12" y1="53" x2="52" y2="53"/></g><path d="M17 29 L27 39 L47 17" fill="none" stroke="#3ccf7f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wm">Medição<b>CERTA</b></span></div>
   <h1>ES-475 Castelo–Fruteiras</h1>
   <p class="sub"><span id="sync" class="syncb">conectando…</span> Contrato 007/2014 · Projeto executivo × 55ª medição · <span id="npts"></span> pontos de drenagem</p>
   <form id="busca" class="busca" autocomplete="off"><span aria-hidden="true">🔎</span><input id="buscai" inputmode="decimal" placeholder="Ir para a estaca (ex.: 243 ou 243+06)" aria-label="Ir para a estaca"><button class="btn" type="submit">Ir</button></form>
@@ -225,6 +241,8 @@ const fmtQ=v=>(Math.round((v||0)*100)/100).toLocaleString('pt-BR');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtD=iso=>{try{return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
 let D=null,field={},fotos=[],DB=null,ASSETS=null,SAMPLE=null,DL=null,canWrite=true,openId=null;
+const confirma=(msg,ok='Confirmar')=>new Promise(res=>{const w=document.createElement('div');w.className='cfm';w.innerHTML=`<div class="cfm-b" role="dialog" aria-modal="true"><p></p><div><button class="btn ghost" data-v="0">Cancelar</button><button class="btn" data-v="1"></button></div></div>`;w.querySelector('p').textContent=msg;w.querySelector('[data-v="1"]').textContent=ok;document.body.appendChild(w);
+  const fim=v=>{w.remove();res(v)};w.onclick=e=>{const b=e.target.closest('[data-v]');if(b)fim(b.dataset.v==='1');else if(e.target===w)fim(false)};w.querySelector('[data-v="1"]').focus()});
 const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600)};
 const estN=s=>{const m=String(s||'').match(/(\d+)\+(\d+)(?:,(\d+))?/);return m?+m[1]+(+m[2]+(m[3]?+('0.'+m[3]):0))/20:null};
 const P=id=>D.points.find(p=>p.id===id);
@@ -274,11 +292,11 @@ async function connect(){
   if(DL)$('#xl1').style.display='';
   connected=true;
   if(!DB){field={...filaCampo};sb.textContent='⚠ sem nuvem – abra pelo link do claude.ai';sb.style.background='#fde2e2';sb.style.color='#a11';toast('Esta cópia não está ligada à nuvem: os avanços e fotos do celular não aparecem aqui. Abra pelo link do claude.ai logado na mesma conta.');updateWarn();render();return}
-  if(OFF){sb.textContent='📴 offline · salvo no celular';sb.classList.add('on')}else sb.textContent='sincronizando…';
+  if(DEMO){sb.textContent='demonstração · dados neste aparelho';sb.classList.add('on')}else if(OFF){sb.textContent='📴 offline · salvo no celular';sb.classList.add('on')}else sb.textContent='sincronizando…';
   let timer=setTimeout(()=>{sb.textContent='sem conexão – dados podem estar desatualizados'},10000);
   DB.collection('campo').onSnapshot(snap=>{
     const f={};snap.docs.forEach(d=>{const x=d.data();if(x)f[d.id.slice(1)]=x});Object.keys(filaCampo).forEach(k=>f[k]=filaCampo[k]);field=f;
-    if(!snap.metadata.fromCache){clearTimeout(timer);sb.textContent=OFF?'📴 offline · '+snap.docs.length+' marcações no celular':'nuvem ok · '+snap.docs.length+' marcações';sb.classList.add('on');syncAll()}
+    if(!snap.metadata.fromCache){clearTimeout(timer);sb.textContent=DEMO?'demonstração · '+snap.docs.length+' marcações':OFF?'📴 offline · '+snap.docs.length+' marcações no celular':'nuvem ok · '+snap.docs.length+' marcações';sb.classList.add('on');syncAll()}
     render();
   },e=>{clearTimeout(timer);sb.textContent='erro ao sincronizar';field={...field,...filaCampo};lastErr=true;updateWarn();render()});
   DB.collection('diario').onSnapshot(snap=>{diario=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.data||'').localeCompare(a.data||''));if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#dic')))drawDiario()},()=>{});
@@ -326,8 +344,9 @@ function autoAlerts(p){
 }
 
 fetch('data.json').then(r=>r.json()).then(d=>{D=d;init();connect()});
+setTimeout(()=>{const sp=$('#splash');if(sp)sp.remove()},6000);
 
-function init(){
+function init(){setTimeout(()=>{const sp=$('#splash');if(sp){sp.classList.add('off');setTimeout(()=>sp.remove(),400)}},500);
   D.points.forEach(p=>{p.st=status(p);p.aa=autoAlerts(p);p.hasAlert=!!(p.balert||p.dalert)});
   D.byP={};D.pend.forEach(x=>(D.byP[x.p]=D.byP[x.p]||[]).push(x));
   $('#npts').textContent=D.points.length;
@@ -404,12 +423,12 @@ function drawDisc(){const el=$('#disc');if(!el||!D||!D.ff)return;
   el.querySelectorAll('[data-dg]').forEach(b=>b.onclick=()=>{dsF.g=b.dataset.dg;dsF.open='';drawDisc()});
   if($('#dsx'))$('#dsx').onclick=()=>{dsF.e='';drawDisc()};
   el.querySelectorAll('[data-di]').forEach(b=>b.onclick=()=>{dsF.open=dsF.open===b.dataset.di?'':b.dataset.di;drawDisc()});
-  el.querySelectorAll('[data-dx]').forEach(b=>b.onclick=async()=>{if(!confirm('Remover este lançamento da próxima medição?'))return;try{await DB.doc('extras/'+b.dataset.dx).delete();toast('Removido.')}catch(er){toast('Não foi possível remover agora.')}});
+  el.querySelectorAll('[data-dx]').forEach(b=>b.onclick=async()=>{if(!await confirma('Remover este lançamento da próxima medição?'))return;try{await DB.doc('extras/'+b.dataset.dx).delete();toast('Removido.')}catch(er){toast('Não foi possível remover agora.')}});
   el.querySelectorAll('.dsform').forEach(f=>f.onsubmit=async ev=>{ev.preventDefault();const cod=f.dataset.cod,pe=t=>{const m=String(t||'').trim().replace(',','.').match(/^(\d+)(?:\s*\+\s*([\d.]+))?$/);return m?[+m[1],m[2]?+m[2]:0]:null};
     const a=pe(f.elements.a.value),b=f.elements.b.value.trim()?pe(f.elements.b.value):null,q=+String(f.elements.q.value).replace(',','.');
     if(!a){toast('Informe a estaca inicial, ex.: 120+05');return}if(f.elements.b.value.trim()&&!b){toast('Estaca final inválida.');return}if(!(q>0)){toast('Informe a quantidade.');return}
     const it=D.ff.itens.find(z=>z.cod===cod),soma=extras.filter(x=>x.cod===cod).reduce((s,x)=>s+(+x.q||0),0);
-    if(it&&it.qc&&it.qa+soma+q>it.qc*1.0001&&!confirm(`Com esse lançamento o item passa do contratado (${fmtQ(it.qc)} ${it.u}). Lançar mesmo assim?`))return;
+    if(it&&it.qc&&it.qa+soma+q>it.qc*1.0001&&!await confirma(`Com esse lançamento o item passa do contratado (${fmtQ(it.qc)} ${it.u}). Lançar mesmo assim?`))return;
     const doc={cod,i:a[0],f:a[1],...(b?{i2:b[0],f2:b[1]}:{}),lado:f.elements.lado.value,q,obs:f.elements.obs.value||'',L:null,at:new Date().toISOString(),by:UID||'',disc:true};
     try{await DB.collection('extras').add(doc);toast('Lançado na próxima medição.');logHist('x'+cod,'lançou na medição',`${cod} ${fmtQ(q)} ${it?it.u:''}`)}catch(er){toast('Sem sinal: tente de novo quando tiver sinal.')}});
 }
@@ -663,9 +682,9 @@ function refreshPanelFotos(){
     :'<p class="muted" style="font-size:13px;margin:4px 0">Nenhuma foto ainda.</p>';
   el.querySelectorAll('[data-img]').forEach(t=>t.onclick=e=>{if(e.target.closest('button'))return;const f=fotos.find(z=>z.id===t.dataset.img);$('#vimg').src=f.url||'/_blob/'+f.asset;$('#viewer').classList.add('on')});
   el.querySelectorAll('[data-qimg]').forEach(t=>t.onclick=e=>{if(e.target.closest('button'))return;$('#vimg').src=t.dataset.u;$('#viewer').classList.add('on')});
-  el.querySelectorAll('[data-df]').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!confirm('Apagar esta foto? Ela sai do ponto e do relatório.'))return;
+  el.querySelectorAll('[data-df]').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!await confirma('Apagar esta foto? Ela sai do ponto e do relatório.'))return;
     const f=fotos.find(z=>z.id===b.dataset.df);try{await DB.doc('fotos/'+b.dataset.df).delete();fotos=fotos.filter(z=>z.id!==b.dataset.df);logHist('f'+(f?f.p:''),'apagou foto',f&&P(f.p)?P(f.p).est.split(' ')[0]:'');toast('Foto apagada.');refreshPanelFotos();render()}catch(er){toast('Sem sinal: não consegui apagar agora.')}});
-  el.querySelectorAll('[data-dq]').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!confirm('Apagar esta foto que ainda não subiu?'))return;filaFotos=filaFotos.filter(r=>r.qid!==b.dataset.dq);try{await IDB.del(b.dataset.dq)}catch(er){}updateWarn();refreshPanelFotos();toast('Foto apagada.')});
+  el.querySelectorAll('[data-dq]').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!await confirma('Apagar esta foto que ainda não subiu?'))return;filaFotos=filaFotos.filter(r=>r.qid!==b.dataset.dq);try{await IDB.del(b.dataset.dq)}catch(er){}updateWarn();refreshPanelFotos();toast('Foto apagada.')});
   el.querySelectorAll('[data-gf]').forEach(b=>b.onclick=()=>{const f=fotos.find(z=>z.id===b.dataset.gf);salvarNoCelular(f.url||'/_blob/'+f.asset,f.p,f.at)});
   el.querySelectorAll('[data-gq]').forEach(b=>b.onclick=()=>{const r=filaFotos.find(z=>z.qid===b.dataset.gq);salvarNoCelular(r.blob,r.p,r.at)});
   el.querySelectorAll('[data-an]').forEach(b=>b.onclick=()=>analisar(fotos.find(z=>z.id===b.dataset.an)));
@@ -1317,8 +1336,9 @@ function drawAnalise(){
   if($('#brel'))$('#brel').onclick=gerarRelatorio;
 }
 // ================= MODO OFFLINE (pacote celular ↔ sistema) =================
-const OFF=!!window.OFFLINE;let onMsg='';
+const OFF=!!window.OFFLINE,DEMO=!!window.DEMO;let onMsg='';
 function cardOffline(){
+  if(DEMO)return `<div class="card" style="border:1.5px solid #2fae6a"><b style="font-size:15px">Você está na demonstração</b><p class="muted" style="font-size:12px;margin:2px 0 8px">Obra fictícia. Tudo o que você marca, fotografa ou lança fica só neste aparelho. Pode testar à vontade.</p><button class="btn ghost" id="demoreset">↺ Recomeçar a demonstração</button></div>`;
   if(OFF)return `<div class="card" style="border:1.5px solid var(--acc)"><b style="font-size:15px">📴 Modo offline</b>
     <p class="muted" style="font-size:12px;margin:2px 0 8px">Tudo que você marca e fotografa fica salvo neste celular, sem internet. Quando tiver sinal, exporte o pacote e importe no sistema online (claude.ai).</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="offexp">📤 Exportar para o sistema</button>
@@ -1333,13 +1353,14 @@ function cardOffline(){
 }
 const lerJSON=f=>new Promise((ok,err)=>{const r=new FileReader();r.onload=()=>{try{ok(JSON.parse(r.result))}catch(e){err(e)}};r.onerror=err;r.readAsText(f)});
 function ligarOffline(){
+  if(DEMO){const b=$('#demoreset');if(b)b.onclick=async()=>{if(!await confirma('Apagar tudo o que você fez na demonstração e começar de novo?'))return;try{indexedDB.deleteDatabase('fru-offline');localStorage.clear();const ks=await caches.keys();await Promise.all(ks.filter(k=>k==='fru-fotos').map(k=>caches.delete(k)))}catch(e){}location.reload()};return}
   const dt=new Date().toISOString().slice(0,16).replace('T',' ').replace(':','h');
   if(OFF){
     const st=()=>{const d=OFFLINE.store['__dirty/x']||{},n=Object.keys(d).length;$('#offst').textContent=n?`${n} registro(s) feitos aqui ainda não importados no sistema.`:'Nada pendente para enviar.'};st();
     $('#offexp').onclick=async()=>{const pk=await OFFLINE.exportar();if(!Object.keys(pk.campo).length&&!pk.fotos.length&&!Object.keys(pk.extras).length&&!Object.keys(pk.diario||{}).length){toast('Nada novo para exportar.');return}
       await DL.save({filename:`Pacote offline Fruteiras ${dt}.json`,data:new Blob([JSON.stringify(pk)],{type:'application/json'})});toast(`Pacote com ${Object.keys(pk.campo).length} marcações e ${pk.fotos.length} fotos.`)};
     $('#offimp').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const pk=await lerJSON(f);const n=await OFFLINE.importar(pk);toast(`${n} registro(s) atualizados com o sistema.`)}catch(er){toast('Arquivo inválido.')}e.target.value=''};
-    $('#offlimpa').onclick=async()=>{if(!confirm('Confirma que já importou o pacote no sistema online? As marcações continuam aqui, só deixam de ir no próximo pacote.'))return;await OFFLINE.limparEnviados();st();toast('Pronto.')};
+    $('#offlimpa').onclick=async()=>{if(!await confirma('Confirma que já importou o pacote no sistema online? As marcações continuam aqui, só deixam de ir no próximo pacote.'))return;await OFFLINE.limparEnviados();st();toast('Pronto.')};
     return}
   if($('#onexp'))$('#onexp').onclick=async()=>{const pk={v:1,de:'online',at:new Date().toISOString(),campo:{},extras:{}};
     Object.entries(field).forEach(([k,v])=>{if(v&&v.s!==undefined||v&&v.cod)pk.campo['k'+k]=v});extras.forEach(x=>{const {id,...r}=x;pk.extras[id]=r});
